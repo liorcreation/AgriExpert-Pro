@@ -1,0 +1,167 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    color-scheme: light;
+    --ag-bg: 250 248 241;
+    --ag-surface: 255 254 251;
+    --ag-surface-raised: 255 255 255;
+    --ag-ink: 23 34 49;
+    --ag-muted: 81 96 112;
+    --ag-border: 226 221 204;
+    --ag-brand: 15 61 46;
+    --ag-accent: 16 185 129;
+    --ag-gold: 212 175 55;
+    --ag-danger: 217 45 32;
+  }
+
+  .dark {
+    color-scheme: dark;
+    --ag-bg: 9 13 22;
+    --ag-surface: 16 23 34;
+    --ag-surface-raised: 23 34 49;
+    --ag-ink: 244 247 249;
+    --ag-muted: 168 182 195;
+    --ag-border: 51 68 90;
+    --ag-brand: 52 211 153;
+    --ag-accent: 16 185 129;
+    --ag-gold: 232 212 138;
+    --ag-danger: 240 68 56;
+  }
+
+  html {
+    @apply scroll-smooth;
+  }
+
+  body {
+    @apply bg-cream-100 font-sans text-obsidian-800 antialiased dark:bg-obsidian-950 dark:text-cream-50;
+    background-image:
+      radial-gradient(circle at 10% 0%, rgba(16, 185, 129, 0.08), transparent 26rem),
+      radial-gradient(circle at 100% 10%, rgba(212, 175, 55, 0.07), transparent 24rem);
+  }
+
+  ::selection {
+    @apply bg-territory-500/25 text-territory-950 dark:text-cream-50;
+  }
+
+  :focus-visible {
+    @apply outline-none ring-2 ring-territory-500 ring-offset-2 ring-offset-cream-50 dark:ring-offset-obsidian-950;
+  }
+}
+
+@layer components {
+  .ag-glass {
+    @apply border border-white/60 bg-white/70 shadow-glass backdrop-blur-glass dark:border-white/10 dark:bg-obsidian-800/70 dark:shadow-soft-dark;
+  }
+
+  .ag-card {
+    @apply rounded-card border border-cream-300/80 bg-cream-50 shadow-soft dark:border-obsidian-700 dark:bg-obsidian-900;
+  }
+
+  .ag-card-interactive {
+    @apply ag-card transition duration-200 hover:-translate-y-0.5 hover:border-territory-300 hover:shadow-glass dark:hover:border-territory-700;
+  }
+
+  .ag-button {
+    @apply inline-flex min-h-11 items-center justify-center gap-2 rounded-control px-4 py-2.5 text-sm font-semibold transition duration-200 disabled:pointer-events-none disabled:opacity-50;
+  }
+
+  .ag-button-primary {
+    @apply ag-button bg-territory-900 text-white shadow-soft hover:bg-territory-800 active:scale-[0.98] dark:bg-territory-500 dark:text-obsidian-950 dark:hover:bg-territory-400;
+  }
+
+  .ag-button-secondary {
+    @apply ag-button border border-cream-300 bg-cream-50 text-territory-900 hover:border-territory-300 hover:bg-territory-50 dark:border-obsidian-600 dark:bg-obsidian-800 dark:text-territory-300 dark:hover:bg-obsidian-700;
+  }
+
+  .ag-button-ghost {
+    @apply ag-button text-obsidian-700 hover:bg-territory-500/10 dark:text-cream-200 dark:hover:bg-white/10;
+  }
+
+  .ag-button-emergency {
+    @apply ag-button min-h-12 bg-danger-600 px-5 text-white shadow-emergency hover:bg-danger-700 active:scale-[0.98];
+  }
+
+  .ag-input {
+    @apply min-h-11 w-full rounded-control border border-cream-300 bg-cream-50 px-3.5 text-body-sm text-obsidian-800 placeholder:text-obsidian-600/60 focus:border-territory-500 focus:ring-2 focus:ring-territory-500/20 dark:border-obsidian-600 dark:bg-obsidian-900 dark:text-cream-50 dark:placeholder:text-cream-300/50;
+  }
+
+  .ag-label {
+    @apply mb-1.5 block text-body-sm font-semibold text-obsidian-800 dark:text-cream-100;
+  }
+
+  .ag-badge-online {
+    @apply inline-flex items-center gap-1.5 rounded-full bg-success-50 px-2.5 py-1 text-caption font-semibold text-success-600 dark:bg-success-600/15 dark:text-success-500;
+  }
+
+  .ag-badge-online::before {
+    @apply h-1.5 w-1.5 animate-pulse-soft rounded-full bg-success-500 content-[''];
+  }
+
+  .ag-section-kicker {
+    @apply text-caption font-bold uppercase tracking-[0.16em] text-territory-600 dark:text-territory-400;
+  }
+
+  .ag-section-title {
+    @apply mt-1 text-heading-lg text-obsidian-900 dark:text-cream-50;
+  }
+
+  .ag-map-user-marker,
+  .ag-map-expert-marker {
+    background: transparent;
+    border: 0;
+  }
+
+  .ag-map-user-marker span {
+    display: block;
+    width: 36px;
+    height: 36px;
+    border: 4px solid rgba(255, 255, 255, 0.95);
+    border-radius: 999px;
+    background: #10b981;
+    box-shadow: 0 0 0 8px rgba(16, 185, 129, 0.2), 0 8px 20px rgba(9, 13, 22, 0.35);
+  }
+
+  .ag-map-expert-marker span {
+    display: flex;
+    width: 32px;
+    height: 32px;
+    align-items: center;
+    justify-content: center;
+    border: 3px solid rgba(255, 255, 255, 0.95);
+    border-radius: 999px;
+    background: #d4af37;
+    color: #090d16;
+    font-size: 18px;
+    font-weight: 800;
+    box-shadow: 0 6px 18px rgba(9, 13, 22, 0.3);
+  }
+
+  .leaflet-container {
+    z-index: 0;
+    font-family: inherit;
+  }
+
+  .leaflet-control-zoom a {
+    color: #0f3d2e;
+  }
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+  }
+}

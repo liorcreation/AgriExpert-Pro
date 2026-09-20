@@ -1,0 +1,11 @@
+{
+  "name": "agri-expert-pro",
+  "private": true,
+  "packageManager": "pnpm@9.15.0",
+  "scripts": {
+    "build": "pnpm --filter @agri-expert/web build",
+    "dev:web": "pnpm --filter @agri-expert/web dev",
+    "build:web": "pnpm --filter @agri-expert/web build",
+    "typecheck:web": "pnpm --filter @agri-expert/web typecheck"
+  }
+}
