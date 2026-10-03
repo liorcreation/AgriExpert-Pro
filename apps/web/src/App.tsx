@@ -1,11 +1,40 @@
 import { lazy, Suspense, useEffect, useState } from 'react';
-import { Activity, ArrowUpRight, Clock3, MapPinned, MessageCircle, ShieldCheck, Siren, UsersRound, Volume2 } from 'lucide-react';
+import { motion } from 'framer-motion';
+import {
+  Activity,
+  ArrowRight,
+  Bell,
+  BookOpen,
+  Check,
+  ChevronDown,
+  CloudSun,
+  Command,
+  Compass,
+  Leaf,
+  MapPin,
+  Menu,
+  MessageCircle,
+  Mic2,
+  Moon,
+  MoreHorizontal,
+  Plus,
+  Search,
+  ShieldCheck,
+  Siren,
+  Sparkles,
+  Sun,
+  TrendingUp,
+  UsersRound,
+  Volume2,
+  X,
+  Zap,
+} from 'lucide-react';
 import { AppSidebar } from './components/shell/AppSidebar';
-import { InstitutionalHeader } from './components/shell/InstitutionalHeader';
+import type { LanguageCode, NavigationKey, UserRole } from './types/shell';
+
 const EmergencyPage = lazy(async () => ({ default: (await import('./features/emergencies/EmergencyPage')).EmergencyPage }));
 const FeedPage = lazy(async () => ({ default: (await import('./features/feed/FeedPage')).FeedPage }));
 const InstitutionalDashboard = lazy(async () => ({ default: (await import('./features/institutional/InstitutionalDashboard')).InstitutionalDashboard }));
-import type { LanguageCode, NavigationKey, UserRole } from './types/shell';
 
 function App() {
   const [activeKey, setActiveKey] = useState<NavigationKey>('overview');
@@ -16,152 +45,64 @@ function App() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
 
-  useEffect(() => {
-    document.documentElement.classList.toggle('dark', darkMode);
-  }, [darkMode]);
+  useEffect(() => { document.documentElement.classList.toggle('dark', darkMode); }, [darkMode]);
+  const navigate = (key: NavigationKey) => { setActiveKey(key); setMobileSidebarOpen(false); };
 
   return (
-    <div className="min-h-screen bg-cream-100 dark:bg-obsidian-950">
-      <InstitutionalHeader
-        role={role}
-        language={language}
-        voiceEnabled={voiceEnabled}
-        darkMode={darkMode}
-        onMenuOpen={() => setMobileSidebarOpen(true)}
-        onRoleChange={setRole}
-        onLanguageChange={setLanguage}
-        onVoiceToggle={() => setVoiceEnabled((current) => !current)}
-        onThemeToggle={() => setDarkMode((current) => !current)}
-      />
-
-      <div className="flex min-h-[calc(100vh-76px)]">
-        <AppSidebar
-          activeKey={activeKey}
-          role={role}
-          collapsed={sidebarCollapsed}
-          mobileOpen={mobileSidebarOpen}
-          onNavigate={setActiveKey}
-          onCollapseToggle={() => setSidebarCollapsed((current) => !current)}
-          onMobileClose={() => setMobileSidebarOpen(false)}
-        />
-
-        <main className="min-w-0 flex-1 px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
-          <div className="mx-auto max-w-[1440px]">
-            {activeKey === 'emergency' ? (
-              <Suspense fallback={<PageLoading label="Ouverture du service SOS…" />}><EmergencyPage onBack={() => setActiveKey('overview')} /></Suspense>
-            ) : activeKey === 'feed' ? (
-              <Suspense fallback={<PageLoading label="Chargement du fil d’échanges…" />}><FeedPage onBack={() => setActiveKey('overview')} /></Suspense>
-            ) : activeKey === 'institutional' ? (
-              <Suspense fallback={<PageLoading label="Chargement des indicateurs…" />}><InstitutionalDashboard onBack={() => setActiveKey('overview')} /></Suspense>
-            ) : (
-              <>
-                <OverviewHeader role={role} language={language} voiceEnabled={voiceEnabled} />
-                <OverviewContent onNavigate={setActiveKey} />
-              </>
-            )}
-          </div>
-        </main>
+    <div className="agri-app">
+      <div className="agri-atmosphere agri-atmosphere-one" /><div className="agri-atmosphere agri-atmosphere-two" />
+      <AppSidebar activeKey={activeKey} role={role} collapsed={sidebarCollapsed} mobileOpen={mobileSidebarOpen} onNavigate={navigate} onCollapseToggle={() => setSidebarCollapsed((current) => !current)} onMobileClose={() => setMobileSidebarOpen(false)} />
+      <div className="agri-workspace">
+        <TopBar role={role} language={language} voiceEnabled={voiceEnabled} darkMode={darkMode} onMenuOpen={() => setMobileSidebarOpen(true)} onRoleChange={setRole} onLanguageChange={setLanguage} onVoiceToggle={() => setVoiceEnabled((current) => !current)} onThemeToggle={() => setDarkMode((current) => !current)} />
+        <main className="agri-main"><div className="agri-main-inner">
+          {activeKey === 'overview' ? <Overview navigate={navigate} voiceEnabled={voiceEnabled} /> : activeKey === 'emergency' ? <LazyPage label="Ouverture du centre SOS…"><EmergencyPage onBack={() => navigate('overview')} /></LazyPage> : activeKey === 'feed' ? <LazyPage label="Chargement du fil d’échanges…"><FeedPage onBack={() => navigate('overview')} /></LazyPage> : activeKey === 'institutional' ? <LazyPage label="Chargement du cockpit institutionnel…"><InstitutionalDashboard onBack={() => navigate('overview')} /></LazyPage> : <Overview navigate={navigate} voiceEnabled={voiceEnabled} />}
+        </div></main>
       </div>
     </div>
   );
 }
 
-function PageLoading({ label }: { label: string }) {
-  return <div className="ag-card flex min-h-[420px] items-center justify-center p-8"><div className="text-center"><span className="mx-auto flex h-12 w-12 animate-pulse items-center justify-center rounded-2xl bg-territory-500/10 text-territory-600 dark:text-territory-400"><Activity className="h-5 w-5" /></span><p className="mt-4 text-sm font-semibold text-obsidian-700 dark:text-cream-200">{label}</p></div></div>;
+function TopBar({ role, language, voiceEnabled, darkMode, onMenuOpen, onRoleChange, onLanguageChange, onVoiceToggle, onThemeToggle }: { role: UserRole; language: LanguageCode; voiceEnabled: boolean; darkMode: boolean; onMenuOpen: () => void; onRoleChange: (role: UserRole) => void; onLanguageChange: (language: LanguageCode) => void; onVoiceToggle: () => void; onThemeToggle: () => void }) {
+  return <header className="agri-topbar"><div className="agri-topbar-left"><button type="button" className="agri-mobile-menu" onClick={onMenuOpen} aria-label="Ouvrir le menu"><Menu className="h-5 w-5" /></button><div className="agri-breadcrumb"><span>AgriExpert</span><span className="agri-breadcrumb-slash">/</span><strong>Centre de pilotage</strong></div></div><div className="agri-topbar-actions"><button type="button" className="agri-command-button" aria-label="Ouvrir la recherche"><Search className="h-4 w-4" /><span>Rechercher</span><kbd><Command className="h-3 w-3" /> K</kbd></button><span className="agri-topbar-divider" /><div className="agri-topbar-desktop-controls"><CompactSelect value={role} onChange={(value) => onRoleChange(value as UserRole)} options={[["producer", "Producteur"], ["expert", "Expert"], ["institution", "Institution"]]} /><CompactSelect value={language} onChange={(value) => onLanguageChange(value as LanguageCode)} options={[["fr", "FR"], ["mo", "MO"]]} /><button type="button" className="agri-icon-button" onClick={onVoiceToggle} aria-label="Basculer la voix">{voiceEnabled ? <Volume2 className="h-4 w-4" /> : <Mic2 className="h-4 w-4" />}</button><button type="button" className="agri-icon-button" onClick={onThemeToggle} aria-label="Changer de thème">{darkMode ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}</button></div><button type="button" className="agri-icon-button agri-notification-button" aria-label="Notifications"><Bell className="h-4 w-4" /><span /></button><button type="button" className="agri-avatar-button" aria-label="Ouvrir le profil"><span>SD</span><ChevronDown className="h-3.5 w-3.5" /></button></div></header>;
 }
 
-function OverviewHeader({ role, language, voiceEnabled }: { role: UserRole; language: LanguageCode; voiceEnabled: boolean }) {
-  const roleName = role === 'producer' ? 'Producteur' : role === 'expert' ? 'Expert' : 'Institution';
-  const languageName = language === 'fr' ? 'Français' : 'Mooré';
-
-  return (
-    <div className="mb-8 flex flex-col justify-between gap-5 md:flex-row md:items-end">
-      <div>
-        <p className="ag-section-kicker">Mardi 20 septembre 2026 · Burkina Faso</p>
-        <h1 className="mt-2 text-display-lg text-obsidian-950 dark:text-cream-50">Bonjour Steve,</h1>
-        <p className="mt-2 max-w-2xl text-body-lg text-obsidian-600 dark:text-cream-300">Votre territoire agricole en un coup d’œil. Les experts et les services essentiels sont à portée de main.</p>
-      </div>
-      <div className="ag-glass flex w-fit items-center gap-3 rounded-card px-4 py-3">
-        <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-territory-500/15 text-territory-700 dark:text-territory-300"><Volume2 className="h-5 w-5" /></span>
-        <div>
-          <p className="text-xs font-bold text-obsidian-800 dark:text-cream-100">Assistance vocale</p>
-          <p className="text-[11px] text-obsidian-600 dark:text-cream-300">{voiceEnabled ? `${languageName} activé · ${roleName}` : 'Désactivée'}</p>
-        </div>
-        <span className={['ml-1 h-2.5 w-2.5 rounded-full', voiceEnabled ? 'bg-success-500 animate-pulse-soft' : 'bg-obsidian-300 dark:bg-obsidian-600'].join(' ')} />
-      </div>
-    </div>
-  );
+function CompactSelect({ value, onChange, options }: { value: string; onChange: (value: string) => void; options: string[][] }) {
+  return <div className="agri-compact-select"><select value={value} onChange={(event) => onChange(event.target.value)} aria-label="Préférence">{options.map(([option, label]) => <option key={option} value={option}>{label}</option>)}</select><ChevronDown className="h-3 w-3" /></div>;
 }
 
-function OverviewContent({ onNavigate }: { onNavigate: (key: NavigationKey) => void }) {
-  return (
-    <div className="space-y-6">
-      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4" aria-label="Indicateurs clés">
-        <MetricCard icon={MessageCircle} label="Conseils reçus" value="24" detail="+18% ce mois-ci" tone="green" />
-        <MetricCard icon={Clock3} label="Temps de réponse moyen" value="18 min" detail="-12% cette semaine" tone="gold" />
-        <MetricCard icon={UsersRound} label="Experts disponibles" value="148" detail="Dans votre zone" tone="blue" />
-        <MetricCard icon={ShieldCheck} label="Cas résolus" value="92%" detail="Sur les 30 derniers jours" tone="purple" />
-      </section>
-
-      <section className="grid gap-6 xl:grid-cols-[1.45fr_0.85fr]">
-        <div className="ag-card overflow-hidden p-5 sm:p-6">
-          <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-start">
-            <div>
-              <p className="ag-section-kicker">Accès rapide</p>
-              <h2 className="ag-section-title">De quoi avez-vous besoin aujourd’hui ?</h2>
-              <p className="mt-2 max-w-xl text-sm text-obsidian-600 dark:text-cream-300">Décrivez votre situation par écrit ou par la voix. Un expert certifié vous répondra dans les meilleurs délais.</p>
-            </div>
-            <span className="hidden rounded-full bg-territory-50 px-3 py-1.5 text-xs font-bold text-territory-700 dark:bg-territory-500/10 dark:text-territory-300 sm:inline-flex">Service national</span>
-          </div>
-          <div className="mt-6 grid gap-3 sm:grid-cols-2">
-            <button type="button" className="ag-button-primary min-h-[58px] justify-between px-4" onClick={() => onNavigate('feed')}>
-              <span className="flex items-center gap-3"><MessageCircle className="h-5 w-5" /> Poser une question</span><ArrowUpRight className="h-4 w-4" />
-            </button>
-            <button type="button" className="ag-button-emergency min-h-[58px] justify-between px-4" onClick={() => onNavigate('emergency')}>
-              <span className="flex items-center gap-3"><Siren className="h-5 w-5" /> Signaler une urgence</span><ArrowUpRight className="h-4 w-4" />
-            </button>
-          </div>
-        </div>
-
-        <div className="ag-card p-5 sm:p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="ag-section-kicker">Territoire</p>
-              <h2 className="ag-section-title">Experts à proximité</h2>
-            </div>
-            <MapPinned className="h-5 w-5 text-territory-600 dark:text-territory-400" />
-          </div>
-          <div className="mt-5 flex items-center gap-4 rounded-control bg-territory-50 p-4 dark:bg-territory-500/10">
-            <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-territory-900 text-white dark:bg-territory-500 dark:text-obsidian-950"><span className="text-xl font-bold">148</span></div>
-            <div><p className="text-sm font-bold text-obsidian-800 dark:text-cream-100">Professionnels en ligne</p><p className="mt-1 text-xs text-obsidian-600 dark:text-cream-300">Rayon de 50 km autour de votre exploitation</p></div>
-          </div>
-          <button type="button" className="ag-button-secondary mt-4 w-full" onClick={() => onNavigate('directory')}>Voir l’annuaire <ArrowUpRight className="h-4 w-4" /></button>
-        </div>
-      </section>
-
-      <section className="ag-card p-5 sm:p-6">
-        <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
-          <div><p className="ag-section-kicker">Votre activité</p><h2 className="ag-section-title">Suivi des derniers échanges</h2></div>
-          <button type="button" className="ag-button-ghost w-fit px-3 text-xs" onClick={() => onNavigate('feed')}>Voir tout <ArrowUpRight className="h-4 w-4" /></button>
-        </div>
-        <div className="mt-5 grid gap-3 lg:grid-cols-3">
-          <ActivityItem category="Agriculture" title="Feuilles de maïs jaunissantes" status="Réponse reçue" statusTone="green" time="Il y a 18 min" />
-          <ActivityItem category="Élevage / Vétérinaire" title="Prévention de la maladie de Newcastle" status="En cours" statusTone="gold" time="Hier, 16:40" />
-          <ActivityItem category="Fiche technique" title="Calendrier de fertilisation du coton" status="À consulter" statusTone="blue" time="Il y a 3 jours" />
-        </div>
-      </section>
-    </div>
-  );
+function Overview({ navigate, voiceEnabled }: { navigate: (key: NavigationKey) => void; voiceEnabled: boolean }) {
+  return <div className="agri-overview"><div className="agri-welcome-row"><div><div className="agri-eyebrow"><span className="agri-eyebrow-dot" /> Mardi 03 octobre 2026 <span className="agri-eyebrow-separator">·</span> Burkina Faso</div><h1 className="agri-display-title">Bonjour Steve <span className="agri-wave">✦</span></h1><p className="agri-intro">Votre territoire agricole, vos experts et vos prochaines décisions — réunis au même endroit.</p></div><div className="agri-welcome-actions"><button type="button" className="agri-soft-action"><CloudSun className="h-4 w-4" /><span>28° · Ouaga</span></button><button type="button" className="agri-primary-button" onClick={() => navigate('feed')}><Plus className="h-4 w-4" /> Nouvelle demande</button></div></div><HeroAction navigate={navigate} voiceEnabled={voiceEnabled} /><MetricStrip /><div className="agri-section-heading"><div><span className="agri-section-kicker">Votre cockpit</span><h2>Ce qui mérite votre attention</h2></div><button type="button" className="agri-text-link" onClick={() => navigate('feed')}>Voir l’activité <ArrowRight className="h-4 w-4" /></button></div><div className="agri-content-grid"><PulseCard /><TodayCard navigate={navigate} /></div><div className="agri-section-heading agri-section-heading-lower"><div><span className="agri-section-kicker">Accès terrain</span><h2>Vos outils essentiels</h2></div><span className="agri-live-label"><span /> Tout est opérationnel</span></div><ToolGrid navigate={navigate} /></div>;
 }
 
-function MetricCard({ icon: Icon, label, value, detail, tone }: { icon: typeof MessageCircle; label: string; value: string; detail: string; tone: 'green' | 'gold' | 'blue' | 'purple' }) {
-  const toneClasses = { green: 'bg-territory-500/10 text-territory-700 dark:text-territory-300', gold: 'bg-gold-500/10 text-gold-700 dark:text-gold-300', blue: 'bg-medical-500/10 text-medical-600 dark:text-medical-500', purple: 'bg-violet-500/10 text-violet-700 dark:text-violet-300' };
-  return <div className="ag-card p-5"><div className="flex items-start justify-between gap-3"><span className={['flex h-11 w-11 items-center justify-center rounded-xl', toneClasses[tone]].join(' ')}><Icon className="h-5 w-5" /></span><ArrowUpRight className="h-4 w-4 text-success-600" /></div><p className="mt-4 text-sm text-obsidian-600 dark:text-cream-300">{label}</p><p className="mt-1 text-2xl font-extrabold tracking-tight text-obsidian-950 dark:text-cream-50">{value}</p><p className="mt-1 text-xs font-medium text-success-600 dark:text-success-500">{detail}</p></div>;
+function HeroAction({ navigate, voiceEnabled }: { navigate: (key: NavigationKey) => void; voiceEnabled: boolean }) {
+  return <motion.section className="agri-hero-card" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.45 }}><div className="agri-hero-orbit agri-orbit-one" /><div className="agri-hero-orbit agri-orbit-two" /><div className="agri-hero-copy"><div className="agri-hero-badge"><Sparkles className="h-3.5 w-3.5" /> Votre assistant du territoire</div><h2>Une décision plus sûre commence par <em>la bonne expertise.</em></h2><p>Posez une question par écrit ou par la voix. Notre réseau de spécialistes vous accompagne, de la parcelle au troupeau.</p><div className="agri-hero-buttons"><button type="button" className="agri-hero-primary" onClick={() => navigate('feed')}><MessageCircle className="h-4 w-4" /> Demander un conseil <ArrowRight className="ml-1 h-4 w-4" /></button><button type="button" className="agri-hero-voice" onClick={() => navigate('feed')}><span className={voiceEnabled ? 'agri-voice-pulse' : 'agri-voice-pulse agri-voice-off'}><Mic2 className="h-4 w-4" /></span> Parler à un expert</button></div></div><div className="agri-hero-visual"><div className="agri-hero-sun" /><div className="agri-hero-field"><span /><span /><span /><span /><span /></div><div className="agri-hero-plant"><Leaf className="h-24 w-24" /></div><div className="agri-floating-chip agri-chip-top"><span className="agri-chip-icon"><ShieldCheck className="h-3.5 w-3.5" /></span><span><b>Expert certifié</b><small>Réponse en 18 min</small></span></div><div className="agri-floating-chip agri-chip-bottom"><span className="agri-chip-avatar">AK</span><span><b>Awa Kaboré</b><small><i /> En ligne maintenant</small></span></div></div></motion.section>;
 }
 
-function ActivityItem({ category, title, status, statusTone, time }: { category: string; title: string; status: string; statusTone: 'green' | 'gold' | 'blue'; time: string }) {
-  const statusClasses = { green: 'bg-success-50 text-success-600 dark:bg-success-500/10 dark:text-success-500', gold: 'bg-gold-100 text-gold-700 dark:bg-gold-500/10 dark:text-gold-300', blue: 'bg-medical-50 text-medical-600 dark:bg-medical-500/10 dark:text-medical-500' };
-  return <article className="rounded-control border border-cream-300/70 p-4 transition hover:border-territory-300 dark:border-obsidian-700 dark:hover:border-territory-700"><div className="flex items-center justify-between gap-3"><span className="text-[11px] font-bold uppercase tracking-wide text-obsidian-600 dark:text-cream-300">{category}</span><span className={['rounded-full px-2 py-1 text-[10px] font-bold', statusClasses[statusTone]].join(' ')}>{status}</span></div><h3 className="mt-3 line-clamp-2 text-sm font-bold text-obsidian-900 dark:text-cream-50">{title}</h3><p className="mt-3 text-xs text-obsidian-600 dark:text-cream-300">{time}</p></article>;
+function MetricStrip() {
+  const metrics = [{ icon: MessageCircle, label: 'Conseils reçus', value: '24', delta: '+18%', note: 'ce mois-ci', color: 'green' }, { icon: Zap, label: 'Temps de réponse', value: '18 min', delta: '-12%', note: 'vs. semaine passée', color: 'gold' }, { icon: UsersRound, label: 'Experts disponibles', value: '148', delta: 'En direct', note: 'dans votre zone', color: 'blue' }, { icon: ShieldCheck, label: 'Cas résolus', value: '92%', delta: '+4,8%', note: 'sur 30 jours', color: 'violet' }];
+  return <div className="agri-metric-strip">{metrics.map((metric, index) => { const Icon = metric.icon; return <motion.div key={metric.label} className="agri-metric-card" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.06, duration: 0.35 }}><div className={`agri-metric-icon agri-metric-${metric.color}`}><Icon className="h-4.5 w-4.5" /></div><div className="agri-metric-copy"><span>{metric.label}</span><strong>{metric.value}</strong><small className={metric.delta === 'En direct' ? 'agri-metric-live' : ''}>{metric.delta} <em>{metric.note}</em></small></div><TrendingUp className="agri-metric-trend h-4 w-4" /></motion.div>; })}</div>;
+}
+
+function PulseCard() {
+  const bars = [38, 52, 44, 70, 58, 80, 67, 93, 74, 86, 63, 78, 88, 68, 91, 76, 95, 82, 98, 84];
+  return <section className="agri-panel agri-pulse-panel"><div className="agri-panel-head"><div><span className="agri-panel-kicker"><Activity className="h-3.5 w-3.5" /> Pulse du réseau</span><h3>Votre activité cette semaine</h3></div><button type="button" className="agri-more-button" aria-label="Plus d’options"><MoreHorizontal className="h-4 w-4" /></button></div><div className="agri-pulse-stats"><div><strong>128</strong><span>interactions</span></div><div className="agri-pulse-change"><TrendingUp className="h-3.5 w-3.5" /> +16,4%</div><div className="agri-pulse-legend"><span className="agri-legend-dot" /> Demandes traitées</div></div><div className="agri-bars" aria-label="Graphique des interactions de la semaine">{bars.map((height, index) => <span key={`${height}-${index}`} style={{ height: `${height}%` }} className={index > 15 ? 'agri-bar-active' : ''} />)}</div><div className="agri-chart-labels"><span>Lun</span><span>Mar</span><span>Mer</span><span>Jeu</span><span>Ven</span><span>Sam</span><span>Dim</span></div></section>;
+}
+
+function TodayCard({ navigate }: { navigate: (key: NavigationKey) => void }) {
+  return <section className="agri-panel agri-today-panel"><div className="agri-panel-head"><div><span className="agri-panel-kicker"><Sparkles className="h-3.5 w-3.5" /> À ne pas manquer</span><h3>Votre journée en un coup d’œil</h3></div><span className="agri-date-badge">03 OCT</span></div><div className="agri-agenda"><AgendaItem color="green" time="09:00" title="Réponse de l’ing. Awa Kaboré" detail="Feuilles de maïs jaunissantes" /><AgendaItem color="gold" time="11:30" title="Rappel d’itinéraire" detail="2e application · Parcelle Nord" /><AgendaItem color="blue" time="14:00" title="Disponibilité vétérinaire" detail="Dr. Adama Traoré · en ligne" /></div><button type="button" className="agri-outline-button" onClick={() => navigate('guides')}>Ouvrir mes itinéraires <ArrowRight className="h-3.5 w-3.5" /></button></section>;
+}
+
+function AgendaItem({ color, time, title, detail }: { color: 'green' | 'gold' | 'blue'; time: string; title: string; detail: string }) {
+  return <div className="agri-agenda-item"><span className={`agri-agenda-line agri-line-${color}`} /><time>{time}</time><div><strong>{title}</strong><span>{detail}</span></div><Check className="agri-agenda-check h-4 w-4" /></div>;
+}
+
+function ToolGrid({ navigate }: { navigate: (key: NavigationKey) => void }) {
+  const tools = [{ key: 'feed' as NavigationKey, icon: MessageCircle, number: '01', title: 'Fil d’échanges', text: 'Conseils de terrain vérifiés par la communauté.', action: 'Explorer le fil', tone: 'green' }, { key: 'emergency' as NavigationKey, icon: Siren, number: '02', title: 'SOS Agropastoral', text: 'Une urgence ? Mobilisez l’expert le plus proche.', action: 'Signaler maintenant', tone: 'red' }, { key: 'guides' as NavigationKey, icon: BookOpen, number: '03', title: 'Fiches techniques', text: 'Des itinéraires clairs pour chaque saison.', action: 'Voir les guides', tone: 'gold' }, { key: 'directory' as NavigationKey, icon: Compass, number: '04', title: 'Annuaire experts', text: '148 professionnels prêts à vous répondre.', action: 'Trouver un expert', tone: 'blue' }];
+  return <div className="agri-tool-grid">{tools.map((tool, index) => { const Icon = tool.icon; return <motion.button key={tool.key} type="button" className={`agri-tool-card agri-tool-${tool.tone}`} onClick={() => navigate(tool.key)} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.05, duration: 0.3 }}><div className="agri-tool-top"><span className="agri-tool-number">{tool.number}</span><span className="agri-tool-icon"><Icon className="h-5 w-5" /></span></div><div><h3>{tool.title}</h3><p>{tool.text}</p></div><span className="agri-tool-action">{tool.action}<ArrowRight className="h-3.5 w-3.5" /></span></motion.button>; })}</div>;
+}
+
+function LazyPage({ label, children }: { label: string; children: React.ReactNode }) {
+  return <Suspense fallback={<div className="agri-page-loading"><span><Activity className="h-5 w-5" /></span><p>{label}</p></div>}>{children}</Suspense>;
 }
 
 export default App;
