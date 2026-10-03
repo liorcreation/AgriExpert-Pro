@@ -19,6 +19,7 @@ import {
   MoreHorizontal,
   Plus,
   Search,
+  Settings2,
   ShieldCheck,
   Siren,
   Sparkles,
@@ -35,6 +36,7 @@ import type { LanguageCode, NavigationKey, UserRole } from './types/shell';
 const EmergencyPage = lazy(async () => ({ default: (await import('./features/emergencies/EmergencyPage')).EmergencyPage }));
 const FeedPage = lazy(async () => ({ default: (await import('./features/feed/FeedPage')).FeedPage }));
 const InstitutionalDashboard = lazy(async () => ({ default: (await import('./features/institutional/InstitutionalDashboard')).InstitutionalDashboard }));
+const ResourcesPage = lazy(async () => ({ default: (await import('./features/resources/ResourcesPage')).ResourcesPage }));
 
 function App() {
   const [activeKey, setActiveKey] = useState<NavigationKey>('overview');
@@ -44,8 +46,17 @@ function App() {
   const [darkMode, setDarkMode] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+  const [overlay, setOverlay] = useState<'search' | 'notifications' | 'profile' | null>(null);
 
   useEffect(() => { document.documentElement.classList.toggle('dark', darkMode); }, [darkMode]);
+  useEffect(() => {
+    const handleShortcut = (event: KeyboardEvent) => {
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') { event.preventDefault(); setOverlay('search'); }
+      if (event.key === 'Escape') setOverlay(null);
+    };
+    window.addEventListener('keydown', handleShortcut);
+    return () => window.removeEventListener('keydown', handleShortcut);
+  }, []);
   const navigate = (key: NavigationKey) => { setActiveKey(key); setMobileSidebarOpen(false); };
 
   return (
@@ -53,17 +64,20 @@ function App() {
       <div className="agri-atmosphere agri-atmosphere-one" /><div className="agri-atmosphere agri-atmosphere-two" />
       <AppSidebar activeKey={activeKey} role={role} collapsed={sidebarCollapsed} mobileOpen={mobileSidebarOpen} onNavigate={navigate} onCollapseToggle={() => setSidebarCollapsed((current) => !current)} onMobileClose={() => setMobileSidebarOpen(false)} />
       <div className="agri-workspace">
-        <TopBar role={role} language={language} voiceEnabled={voiceEnabled} darkMode={darkMode} onMenuOpen={() => setMobileSidebarOpen(true)} onRoleChange={setRole} onLanguageChange={setLanguage} onVoiceToggle={() => setVoiceEnabled((current) => !current)} onThemeToggle={() => setDarkMode((current) => !current)} />
+        <TopBar role={role} language={language} voiceEnabled={voiceEnabled} darkMode={darkMode} onMenuOpen={() => setMobileSidebarOpen(true)} onRoleChange={setRole} onLanguageChange={setLanguage} onVoiceToggle={() => setVoiceEnabled((current) => !current)} onThemeToggle={() => setDarkMode((current) => !current)} onSearch={() => setOverlay('search')} onNotifications={() => setOverlay(overlay === 'notifications' ? null : 'notifications')} onProfile={() => setOverlay(overlay === 'profile' ? null : 'profile')} />
+        {overlay === 'search' && <CommandPalette onClose={() => setOverlay(null)} navigate={(key) => { navigate(key); setOverlay(null); }} />}
+        {overlay === 'notifications' && <NotificationPanel onClose={() => setOverlay(null)} />}
+        {overlay === 'profile' && <ProfilePanel role={role} onClose={() => setOverlay(null)} />}
         <main className="agri-main"><div className="agri-main-inner">
-          {activeKey === 'overview' ? <Overview navigate={navigate} voiceEnabled={voiceEnabled} /> : activeKey === 'emergency' ? <LazyPage label="Ouverture du centre SOS…"><EmergencyPage onBack={() => navigate('overview')} /></LazyPage> : activeKey === 'feed' ? <LazyPage label="Chargement du fil d’échanges…"><FeedPage onBack={() => navigate('overview')} /></LazyPage> : activeKey === 'institutional' ? <LazyPage label="Chargement du cockpit institutionnel…"><InstitutionalDashboard onBack={() => navigate('overview')} /></LazyPage> : <Overview navigate={navigate} voiceEnabled={voiceEnabled} />}
+          {activeKey === 'overview' ? <Overview navigate={navigate} voiceEnabled={voiceEnabled} /> : activeKey === 'emergency' ? <LazyPage label="Ouverture du centre SOS…"><EmergencyPage onBack={() => navigate('overview')} /></LazyPage> : activeKey === 'feed' ? <LazyPage label="Chargement du fil d’échanges…"><FeedPage onBack={() => navigate('overview')} /></LazyPage> : activeKey === 'institutional' ? <LazyPage label="Chargement du cockpit institutionnel…"><InstitutionalDashboard onBack={() => navigate('overview')} /></LazyPage> : activeKey === 'guides' ? <LazyPage label="Chargement des fiches techniques…"><ResourcesPage kind="guides" onBack={() => navigate('overview')} onNavigate={navigate} /></LazyPage> : activeKey === 'directory' ? <LazyPage label="Ouverture de l’annuaire…"><ResourcesPage kind="directory" onBack={() => navigate('overview')} onNavigate={navigate} /></LazyPage> : <Overview navigate={navigate} voiceEnabled={voiceEnabled} />}
         </div></main>
       </div>
     </div>
   );
 }
 
-function TopBar({ role, language, voiceEnabled, darkMode, onMenuOpen, onRoleChange, onLanguageChange, onVoiceToggle, onThemeToggle }: { role: UserRole; language: LanguageCode; voiceEnabled: boolean; darkMode: boolean; onMenuOpen: () => void; onRoleChange: (role: UserRole) => void; onLanguageChange: (language: LanguageCode) => void; onVoiceToggle: () => void; onThemeToggle: () => void }) {
-  return <header className="agri-topbar"><div className="agri-topbar-left"><button type="button" className="agri-mobile-menu" onClick={onMenuOpen} aria-label="Ouvrir le menu"><Menu className="h-5 w-5" /></button><div className="agri-breadcrumb"><span>AgriExpert</span><span className="agri-breadcrumb-slash">/</span><strong>Centre de pilotage</strong></div></div><div className="agri-topbar-actions"><button type="button" className="agri-command-button" aria-label="Ouvrir la recherche"><Search className="h-4 w-4" /><span>Rechercher</span><kbd><Command className="h-3 w-3" /> K</kbd></button><span className="agri-topbar-divider" /><div className="agri-topbar-desktop-controls"><CompactSelect value={role} onChange={(value) => onRoleChange(value as UserRole)} options={[["producer", "Producteur"], ["expert", "Expert"], ["institution", "Institution"]]} /><CompactSelect value={language} onChange={(value) => onLanguageChange(value as LanguageCode)} options={[["fr", "FR"], ["mo", "MO"]]} /><button type="button" className="agri-icon-button" onClick={onVoiceToggle} aria-label="Basculer la voix">{voiceEnabled ? <Volume2 className="h-4 w-4" /> : <Mic2 className="h-4 w-4" />}</button><button type="button" className="agri-icon-button" onClick={onThemeToggle} aria-label="Changer de thème">{darkMode ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}</button></div><button type="button" className="agri-icon-button agri-notification-button" aria-label="Notifications"><Bell className="h-4 w-4" /><span /></button><button type="button" className="agri-avatar-button" aria-label="Ouvrir le profil"><span>SD</span><ChevronDown className="h-3.5 w-3.5" /></button></div></header>;
+function TopBar({ role, language, voiceEnabled, darkMode, onMenuOpen, onRoleChange, onLanguageChange, onVoiceToggle, onThemeToggle, onSearch, onNotifications, onProfile }: { role: UserRole; language: LanguageCode; voiceEnabled: boolean; darkMode: boolean; onMenuOpen: () => void; onRoleChange: (role: UserRole) => void; onLanguageChange: (language: LanguageCode) => void; onVoiceToggle: () => void; onThemeToggle: () => void; onSearch: () => void; onNotifications: () => void; onProfile: () => void }) {
+  return <header className="agri-topbar"><div className="agri-topbar-left"><button type="button" className="agri-mobile-menu" onClick={onMenuOpen} aria-label="Ouvrir le menu"><Menu className="h-5 w-5" /></button><div className="agri-breadcrumb"><span>AgriExpert</span><span className="agri-breadcrumb-slash">/</span><strong>Centre de pilotage</strong></div></div><div className="agri-topbar-actions"><button type="button" className="agri-command-button" aria-label="Ouvrir la recherche" onClick={onSearch}><Search className="h-4 w-4" /><span>Rechercher</span><kbd><Command className="h-3 w-3" /> K</kbd></button><span className="agri-topbar-divider" /><div className="agri-topbar-desktop-controls"><CompactSelect value={role} onChange={(value) => onRoleChange(value as UserRole)} options={[["producer", "Producteur"], ["expert", "Expert"], ["institution", "Institution"]]} /><CompactSelect value={language} onChange={(value) => onLanguageChange(value as LanguageCode)} options={[["fr", "FR"], ["mo", "MO"]]} /><button type="button" className="agri-icon-button" onClick={onVoiceToggle} aria-label="Basculer la voix">{voiceEnabled ? <Volume2 className="h-4 w-4" /> : <Mic2 className="h-4 w-4" />}</button><button type="button" className="agri-icon-button" onClick={onThemeToggle} aria-label="Changer de thème">{darkMode ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}</button></div><button type="button" className="agri-icon-button agri-notification-button" aria-label="Notifications" onClick={onNotifications}><Bell className="h-4 w-4" /><span /></button><button type="button" className="agri-avatar-button" aria-label="Ouvrir le profil" onClick={onProfile}><span>SD</span><ChevronDown className="h-3.5 w-3.5" /></button></div></header>;
 }
 
 function CompactSelect({ value, onChange, options }: { value: string; onChange: (value: string) => void; options: string[][] }) {
@@ -99,6 +113,33 @@ function AgendaItem({ color, time, title, detail }: { color: 'green' | 'gold' | 
 function ToolGrid({ navigate }: { navigate: (key: NavigationKey) => void }) {
   const tools = [{ key: 'feed' as NavigationKey, icon: MessageCircle, number: '01', title: 'Fil d’échanges', text: 'Conseils de terrain vérifiés par la communauté.', action: 'Explorer le fil', tone: 'green' }, { key: 'emergency' as NavigationKey, icon: Siren, number: '02', title: 'SOS Agropastoral', text: 'Une urgence ? Mobilisez l’expert le plus proche.', action: 'Signaler maintenant', tone: 'red' }, { key: 'guides' as NavigationKey, icon: BookOpen, number: '03', title: 'Fiches techniques', text: 'Des itinéraires clairs pour chaque saison.', action: 'Voir les guides', tone: 'gold' }, { key: 'directory' as NavigationKey, icon: Compass, number: '04', title: 'Annuaire experts', text: '148 professionnels prêts à vous répondre.', action: 'Trouver un expert', tone: 'blue' }];
   return <div className="agri-tool-grid">{tools.map((tool, index) => { const Icon = tool.icon; return <motion.button key={tool.key} type="button" className={`agri-tool-card agri-tool-${tool.tone}`} onClick={() => navigate(tool.key)} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.05, duration: 0.3 }}><div className="agri-tool-top"><span className="agri-tool-number">{tool.number}</span><span className="agri-tool-icon"><Icon className="h-5 w-5" /></span></div><div><h3>{tool.title}</h3><p>{tool.text}</p></div><span className="agri-tool-action">{tool.action}<ArrowRight className="h-3.5 w-3.5" /></span></motion.button>; })}</div>;
+}
+
+function CommandPalette({ onClose, navigate }: { onClose: () => void; navigate: (key: NavigationKey) => void }) {
+  const commands: Array<{ key: NavigationKey; label: string; detail: string; icon: typeof MessageCircle }> = [
+    { key: 'feed', label: 'Fil d’échanges', detail: 'Poser une question ou consulter les réponses', icon: MessageCircle },
+    { key: 'emergency', label: 'SOS Agropastoral', detail: 'Signaler une urgence prioritaire', icon: Siren },
+    { key: 'guides', label: 'Fiches techniques', detail: 'Trouver un itinéraire de production', icon: BookOpen },
+    { key: 'directory', label: 'Annuaire des experts', detail: 'Contacter un spécialiste proche', icon: Compass },
+    { key: 'institutional', label: 'Pilotage institutionnel', detail: 'Ouvrir les indicateurs territoriaux', icon: Activity },
+  ];
+  const [query, setQuery] = useState('');
+  const visible = commands.filter((item) => `${item.label} ${item.detail}`.toLowerCase().includes(query.toLowerCase()));
+  return <div className="agri-overlay-layer" role="dialog" aria-modal="true" aria-label="Recherche globale" onMouseDown={(event) => { if (event.currentTarget === event.target) onClose(); }}><motion.div className="agri-command-modal" initial={{ opacity: 0, y: -12, scale: .98 }} animate={{ opacity: 1, y: 0, scale: 1 }}><div className="agri-modal-search"><Search className="h-5 w-5" /><input autoFocus value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Que cherchez-vous ?" /><button type="button" onClick={onClose} aria-label="Fermer"><X className="h-4 w-4" /></button></div><div className="agri-command-list">{visible.map((item, index) => { const Icon = item.icon; return <button type="button" key={item.key} onClick={() => navigate(item.key)}><span className="agri-command-icon"><Icon className="h-4 w-4" /></span><span><strong>{item.label}</strong><small>{item.detail}</small></span><kbd>{index < 9 ? `0${index + 1}` : index + 1}</kbd></button>; })}{visible.length === 0 && <p className="agri-command-empty">Aucun parcours trouvé.</p>}</div><div className="agri-modal-footer"><span><Command className="h-3 w-3" /> K pour ouvrir</span><span>ESC pour fermer</span></div></motion.div></div>;
+}
+
+function NotificationPanel({ onClose }: { onClose: () => void }) {
+  const [read, setRead] = useState(false);
+  return <div className="agri-floating-panel agri-notifications-panel"><div className="agri-floating-head"><div><strong>Notifications</strong><small>{read ? 'Tout est lu' : '3 nouvelles informations'}</small></div><button type="button" onClick={onClose} aria-label="Fermer"><X className="h-4 w-4" /></button></div><div className="agri-notification-list"><NotificationItem tone="green" title="Réponse reçue" detail="Ing. Awa Kaboré a répondu à votre question." time="Il y a 9 min" /><NotificationItem tone="gold" title="Rappel d’itinéraire" detail="Votre seconde fertilisation est prévue demain." time="Il y a 1 h" /><NotificationItem tone="red" title="Réseau vétérinaire actif" detail="12 experts sont disponibles autour de Ouagadougou." time="Il y a 2 h" /></div><button type="button" className="agri-panel-link" onClick={() => setRead(true)}>{read ? 'Notifications archivées' : 'Marquer comme lu'} <Check className="h-3.5 w-3.5" /></button></div>;
+}
+
+function NotificationItem({ tone, title, detail, time }: { tone: 'green' | 'gold' | 'red'; title: string; detail: string; time: string }) {
+  return <div className="agri-notification-item"><span className={`agri-notification-dot agri-notification-${tone}`} /><div><strong>{title}</strong><p>{detail}</p><small>{time}</small></div></div>;
+}
+
+function ProfilePanel({ role, onClose }: { role: UserRole; onClose: () => void }) {
+  const roleLabel = role === 'producer' ? 'Producteur' : role === 'expert' ? 'Expert' : 'Institution';
+  return <div className="agri-floating-panel agri-profile-panel"><div className="agri-floating-head"><div className="agri-profile-heading"><span>SD</span><div><strong>Steve D.</strong><small>{roleLabel} · Compte actif</small></div></div><button type="button" onClick={onClose} aria-label="Fermer"><X className="h-4 w-4" /></button></div><div className="agri-profile-menu"><button type="button"><ShieldCheck className="h-4 w-4" /> Mon espace sécurisé <ArrowRight className="ml-auto h-3.5 w-3.5" /></button><button type="button"><Settings2 className="h-4 w-4" /> Préférences <ArrowRight className="ml-auto h-3.5 w-3.5" /></button><button type="button" className="agri-profile-logout"><span>↗</span> Se déconnecter</button></div></div>;
 }
 
 function LazyPage({ label, children }: { label: string; children: React.ReactNode }) {
