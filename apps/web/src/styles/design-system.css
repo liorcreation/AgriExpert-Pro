@@ -246,12 +246,12 @@
 .agri-sidebar-sos-arrow { opacity: .7; }
 .agri-sidebar-collapsed .agri-sidebar-sos { min-height: 44px; justify-content: center; padding: 4px; }
 .agri-sidebar-collapsed .agri-sidebar-sos-icon { height: 34px; width: 34px; }
-.agri-sidebar-scroll { flex: 1; overflow-x: hidden; overflow-y: auto; padding-top: 12px; scrollbar-width: none; }
+.agri-sidebar-scroll { width: 100%; min-width: 0; flex: 1; overflow-x: hidden; overflow-y: auto; padding-top: 12px; scrollbar-width: none; }
 .agri-sidebar-scroll::-webkit-scrollbar { display: none; }
 .agri-sidebar-group { margin-bottom: 23px; }
 .agri-sidebar-group > p { margin: 0 11px 10px; color: #789986; font-size: 8px; font-weight: 850; letter-spacing: .17em; text-transform: uppercase; }
-.agri-sidebar-group > div { display: grid; gap: 4px; }
-.agri-sidebar-item { position: relative; display: flex; min-height: 55px; width: 100%; align-items: center; gap: 11px; border: 1px solid transparent; border-radius: 13px; background: transparent; padding: 7px 9px; color: #aec3b5; text-align: left; transition: border-color .2s ease, background .2s ease, color .2s ease, transform .2s ease; }
+.agri-sidebar-group > div { display: grid; min-width: 0; grid-template-columns: minmax(0,1fr); gap: 4px; }
+.agri-sidebar-item { position: relative; display: flex; min-width: 0; min-height: 55px; width: 100%; align-items: center; gap: 11px; border: 1px solid transparent; border-radius: 13px; background: transparent; padding: 7px 9px; color: #aec3b5; text-align: left; transition: border-color .2s ease, background .2s ease, color .2s ease, transform .2s ease; }
 .agri-sidebar-item:hover { border-color: rgba(202,239,214,.09); background: rgba(235,255,241,.055); color: #f2fbf4; }
 .agri-sidebar-item-active { border-color: rgba(176,229,139,.2); background: linear-gradient(105deg,rgba(32,111,73,.62),rgba(24,79,54,.49)); color: #f5fff5; box-shadow: inset 3px 0 #a9e878,0 7px 18px rgba(2,15,9,.12); }
 .agri-sidebar-item-active:hover { border-color: rgba(176,229,139,.25); background: linear-gradient(105deg,rgba(36,123,80,.67),rgba(24,84,56,.55)); color: #fff; }
