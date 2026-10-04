@@ -379,3 +379,43 @@
   .agri-resource-grid, .agri-expert-grid { grid-template-columns: 1fr; }
   .agri-resource-header h1 { font-size: 37px; }
 }
+
+.agri-brand-intro { position: fixed; z-index: 200; inset: 0; display: grid; overflow: hidden; place-items: center; isolation: isolate; background: #071b15; color: #f5f7f2; perspective: 1100px; }
+.agri-brand-intro::before { position: absolute; z-index: -2; inset: 0; background: radial-gradient(ellipse at 50% 42%, rgba(29,120,79,.36), transparent 34rem), radial-gradient(ellipse at 50% 100%, rgba(16,185,129,.11), transparent 38rem), linear-gradient(145deg,#0c2a20,#071711 70%); content: ''; }
+.agri-brand-intro::after { position: absolute; z-index: -1; inset: 0; background-image: linear-gradient(rgba(235,250,239,.018) 1px,transparent 1px),linear-gradient(90deg,rgba(235,250,239,.018) 1px,transparent 1px); background-size: 72px 72px; mask-image: linear-gradient(transparent,#000 20%,#000 78%,transparent); content: ''; }
+.agri-intro-ambient { position: absolute; z-index: -1; width: min(70vw,760px); aspect-ratio: 1; border-radius: 50%; filter: blur(90px); opacity: .1; pointer-events: none; }
+.agri-intro-ambient-one { top: -45%; left: -22%; background: #10b981; }
+.agri-intro-ambient-two { right: -26%; bottom: -55%; background: #d4af37; opacity: .09; }
+.agri-intro-orbit { position: absolute; width: min(76vw,760px); aspect-ratio: 1; border: 1px solid rgba(214,239,218,.08); border-radius: 50%; pointer-events: none; }
+.agri-intro-orbit::before, .agri-intro-orbit::after { position: absolute; top: 50%; left: 50%; width: 5px; height: 5px; border-radius: 50%; background: #d4af37; box-shadow: 0 0 16px rgba(212,175,55,.72); content: ''; }
+.agri-intro-orbit::before { transform: translate(-50%,-50%) translateX(min(38vw,380px)); }
+.agri-intro-orbit::after { width: 3px; height: 3px; background: #8ce5a9; box-shadow: 0 0 16px rgba(140,229,169,.8); transform: translate(-50%,-50%) translateX(calc(min(38vw,380px) * -1)); }
+.agri-intro-orbit-two { width: min(58vw,580px); border-color: rgba(212,175,55,.1); transform: rotate(32deg) scaleY(.72); }
+.agri-intro-orbit-two::before { background: #10b981; box-shadow: 0 0 16px rgba(16,185,129,.8); transform: translate(-50%,-50%) translateX(min(29vw,290px)); }
+.agri-intro-orbit-two::after { display: none; }
+.agri-intro-skip { position: absolute; z-index: 2; top: max(25px,env(safe-area-inset-top)); right: max(26px,env(safe-area-inset-right)); display: inline-flex; min-height: 42px; align-items: center; gap: 10px; border: 1px solid rgba(220,239,223,.19); border-radius: 999px; background: rgba(236,248,239,.055); padding: 0 16px; color: rgba(240,248,241,.8); font-size: 11px; font-weight: 700; backdrop-filter: blur(14px); transition: .2s ease; }
+.agri-intro-skip:hover { transform: translateY(-1px); border-color: rgba(212,175,55,.58); color: #f4dfa0; }
+.agri-intro-content { position: relative; z-index: 1; display: flex; width: min(92vw,680px); flex-direction: column; align-items: center; justify-content: center; padding: 30px 0 46px; text-align: center; }
+.agri-intro-mark-stage { position: relative; display: grid; width: clamp(196px,31vh,274px); aspect-ratio: 1; place-items: center; transform-style: preserve-3d; }
+.agri-intro-mark-shadow { position: absolute; right: 10%; bottom: 1%; left: 10%; height: 20%; border-radius: 50%; background: #10b981; filter: blur(40px); opacity: .2; transform: translateZ(-55px) rotateX(74deg); }
+.agri-intro-mark { position: relative; width: 88%; height: 88%; overflow: visible; border-radius: 24%; filter: drop-shadow(0 26px 44px rgba(0,0,0,.35)); transform: translateZ(30px); }
+.agri-intro-spark { position: absolute; z-index: 2; top: 20%; right: 3%; width: 6px; height: 6px; border-radius: 50%; background: #d9c078; box-shadow: 0 0 18px rgba(212,175,55,.85); }
+.agri-intro-spark-two { top: 47%; right: auto; left: 1%; width: 4px; height: 4px; background: #7fe1a1; box-shadow: 0 0 16px rgba(127,225,161,.8); }
+.agri-intro-wordmark { margin-top: clamp(5px,2vh,20px); }
+.agri-intro-overline { margin: 0 0 12px; color: rgba(218,237,220,.56); font-size: 9px; font-weight: 800; letter-spacing: .25em; }
+.agri-intro-wordmark h1 { margin: 0; color: #f4f7ee; font-size: clamp(42px,8vw,66px); font-weight: 850; letter-spacing: -.075em; line-height: 1; }
+.agri-intro-wordmark h1 span { color: #63d39c; }
+.agri-intro-tagline { margin: 14px 0 0; color: #e0c36a; font-size: 9px; font-weight: 800; letter-spacing: .34em; }
+.agri-intro-footer { position: absolute; bottom: max(34px,env(safe-area-inset-bottom)); display: flex; align-items: center; gap: 11px; color: rgba(219,237,222,.43); font-size: 8px; font-weight: 800; letter-spacing: .2em; }
+.agri-intro-footer i { width: 3px; height: 3px; border-radius: 50%; background: #bf9f47; }
+.agri-intro-progress { position: absolute; right: 0; bottom: 0; left: 0; height: 2px; background: linear-gradient(90deg,#10b981,#c4e77a,#d4af37); box-shadow: 0 0 18px rgba(16,185,129,.6); transform-origin: left center; }
+@media (max-width: 640px) {
+  .agri-intro-orbit { width: 116vw; }
+  .agri-intro-orbit-two { width: 88vw; }
+  .agri-intro-content { width: 90vw; }
+  .agri-intro-mark-stage { width: clamp(190px,29vh,240px); }
+  .agri-intro-overline { font-size: 7px; letter-spacing: .19em; }
+  .agri-intro-tagline { font-size: 8px; letter-spacing: .25em; }
+  .agri-intro-footer { gap: 8px; font-size: 7px; }
+  .agri-intro-skip { top: max(16px,env(safe-area-inset-top)); right: max(15px,env(safe-area-inset-right)); min-height: 38px; padding: 0 12px; font-size: 10px; }
+}

@@ -1,5 +1,5 @@
-import { lazy, Suspense, useEffect, useState } from 'react';
-import { motion } from 'framer-motion';
+import { lazy, Suspense, useCallback, useEffect, useState } from 'react';
+import { AnimatePresence, motion } from 'framer-motion';
 import {
   Activity,
   ArrowRight,
@@ -31,6 +31,7 @@ import {
   Zap,
 } from 'lucide-react';
 import { AppSidebar } from './components/shell/AppSidebar';
+import { BrandIntro } from './components/brand/BrandIntro';
 import { InstallAppButton } from './components/shell/InstallAppButton';
 import type { LanguageCode, NavigationKey, UserRole } from './types/shell';
 
@@ -39,7 +40,17 @@ const FeedPage = lazy(async () => ({ default: (await import('./features/feed/Fee
 const InstitutionalDashboard = lazy(async () => ({ default: (await import('./features/institutional/InstitutionalDashboard')).InstitutionalDashboard }));
 const ResourcesPage = lazy(async () => ({ default: (await import('./features/resources/ResourcesPage')).ResourcesPage }));
 
+function shouldShowBrandIntro() {
+  if (typeof window === 'undefined') return false;
+  try {
+    return window.sessionStorage.getItem('agriexpert-brand-intro-seen') !== 'true';
+  } catch {
+    return true;
+  }
+}
+
 function App() {
+  const [showBrandIntro, setShowBrandIntro] = useState(shouldShowBrandIntro);
   const [activeKey, setActiveKey] = useState<NavigationKey>('overview');
   const [role, setRole] = useState<UserRole>('producer');
   const [language, setLanguage] = useState<LanguageCode>('fr');
@@ -59,9 +70,14 @@ function App() {
     return () => window.removeEventListener('keydown', handleShortcut);
   }, []);
   const navigate = (key: NavigationKey) => { setActiveKey(key); setMobileSidebarOpen(false); };
+  const completeBrandIntro = useCallback(() => {
+    try { window.sessionStorage.setItem('agriexpert-brand-intro-seen', 'true'); } catch { /* Storage can be unavailable in private contexts. */ }
+    setShowBrandIntro(false);
+  }, []);
 
   return (
     <div className="agri-app">
+      <AnimatePresence>{showBrandIntro && <BrandIntro onComplete={completeBrandIntro} />}</AnimatePresence>
       <div className="agri-atmosphere agri-atmosphere-one" /><div className="agri-atmosphere agri-atmosphere-two" />
       <AppSidebar activeKey={activeKey} role={role} collapsed={sidebarCollapsed} mobileOpen={mobileSidebarOpen} onNavigate={navigate} onCollapseToggle={() => setSidebarCollapsed((current) => !current)} onMobileClose={() => setMobileSidebarOpen(false)} />
       <div className="agri-workspace">
