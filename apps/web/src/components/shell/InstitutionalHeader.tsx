@@ -1,6 +1,7 @@
-import { Bell, ChevronDown, Leaf, Menu, ShieldCheck } from 'lucide-react';
+import { Bell, ChevronDown, Menu, ShieldCheck } from 'lucide-react';
 import type { LanguageCode, UserRole } from '../../types/shell';
 import { RoleLanguageControls } from './RoleLanguageControls';
+import { BrandLogo } from '../brand/BrandLogo';
 
 type InstitutionalHeaderProps = {
   role: UserRole;
@@ -38,22 +39,7 @@ export function InstitutionalHeader({
             <Menu className="h-5 w-5" />
           </button>
 
-          <div className="flex items-center gap-3">
-            <div className="relative flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-territory-900 text-white shadow-soft dark:bg-territory-500 dark:text-obsidian-950">
-              <Leaf className="h-5 w-5" strokeWidth={2.4} />
-              <span className="absolute -bottom-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-gold-500 text-[9px] text-white ring-2 ring-cream-50 dark:ring-obsidian-950">
-                +
-              </span>
-            </div>
-            <div className="min-w-0">
-              <p className="truncate text-sm font-extrabold tracking-[0.08em] text-territory-900 dark:text-territory-300 sm:text-base">
-                AGRIEXPERT PRO
-              </p>
-              <p className="hidden truncate text-[11px] font-medium text-obsidian-600 dark:text-cream-300 sm:block">
-                Plateforme agropastorale nationale
-              </p>
-            </div>
-          </div>
+          <BrandLogo descriptor="Plateforme agropastorale nationale" />
         </div>
 
         <div className="hidden items-center gap-3 lg:flex">

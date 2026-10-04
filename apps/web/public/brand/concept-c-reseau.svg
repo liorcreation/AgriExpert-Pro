@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 680 220" role="img" aria-labelledby="title desc">
+  <title id="title">AgriExpert — L’intelligence en réseau</title><desc id="desc">Un soleil, des parcelles et des points de conseil reliés par une géométrie vivante.</desc>
+  <defs><linearGradient id="c" x1="26" y1="22" x2="192" y2="198" gradientUnits="userSpaceOnUse"><stop stop-color="#f0bf43"/><stop offset="1" stop-color="#d49b24"/></linearGradient></defs>
+  <rect x="20" y="20" width="180" height="180" rx="54" fill="#f4f5ed"/>
+  <path d="M36 120c32-20 55-20 77 0s45 20 77 0v48H36Z" fill="#0f3d2e"/>
+  <path d="M36 137c31-17 54-17 77 0s46 17 77 0M36 153c31-15 54-15 77 0s46 15 77 0" fill="none" stroke="#10b981" stroke-linecap="round" stroke-width="4"/>
+  <circle cx="112" cy="71" r="24" fill="url(#c)"/><path d="M112 36v-9m0 88v-9M77 71h-9m88 0h-9M87 46l-7-7m64 64-7-7m0-50 7-7m-64 64 7-7" stroke="#d49b24" stroke-linecap="round" stroke-width="4"/>
+  <path d="m88 108 25-20 27 19" fill="none" stroke="#f5f7f2" stroke-linecap="round" stroke-linejoin="round" stroke-width="4"/><circle cx="88" cy="108" r="5" fill="#d4af37"/><circle cx="113" cy="88" r="5" fill="#10b981"/><circle cx="140" cy="107" r="5" fill="#d4af37"/>
+  <text x="235" y="111" fill="#12392c" font-family="Inter, Avenir, Arial, sans-serif" font-size="51" font-weight="800" letter-spacing="-2">Agri<tspan fill="#13825e">Expert</tspan></text>
+  <text x="238" y="151" fill="#71847b" font-family="Inter, Avenir, Arial, sans-serif" font-size="15" font-weight="700" letter-spacing="3.1">L’INTELLIGENCE EN RÉSEAU</text>
+</svg>

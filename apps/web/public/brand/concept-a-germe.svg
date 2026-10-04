@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 680 220" role="img" aria-labelledby="title desc">
+  <title id="title">AgriExpert — Le Savoir qui germe</title><desc id="desc">Un germe et des sillons rassemblés dans un sceau végétal.</desc>
+  <defs><linearGradient id="a" x1="35" y1="28" x2="180" y2="190" gradientUnits="userSpaceOnUse"><stop stop-color="#1b6b4c"/><stop offset="1" stop-color="#0b3025"/></linearGradient><linearGradient id="g" x1="76" y1="51" x2="150" y2="142" gradientUnits="userSpaceOnUse"><stop stop-color="#dcf38a"/><stop offset="1" stop-color="#10b981"/></linearGradient></defs>
+  <rect x="20" y="20" width="180" height="180" rx="54" fill="url(#a)"/>
+  <path d="M110 154c0-44 2-68 14-96" fill="none" stroke="#f7f5e9" stroke-linecap="round" stroke-width="9"/>
+  <path d="M120 107C88 105 68 87 64 58c33-2 56 13 56 49Z" fill="url(#g)"/>
+  <path d="M124 91c5-31 26-50 56-52 0 33-17 52-56 52Z" fill="#10b981"/>
+  <path d="M57 157c34-14 74-15 109-2M68 169c27-9 58-10 86-1" fill="none" stroke="#d4af37" stroke-linecap="round" stroke-width="5"/>
+  <circle cx="110" cy="110" r="78" fill="none" stroke="#f5df9a" stroke-opacity=".42" stroke-width="1.5"/>
+  <text x="235" y="111" fill="#12392c" font-family="Inter, Avenir, Arial, sans-serif" font-size="51" font-weight="800" letter-spacing="-2">Agri<tspan fill="#13825e">Expert</tspan></text>
+  <text x="238" y="151" fill="#71847b" font-family="Inter, Avenir, Arial, sans-serif" font-size="15" font-weight="700" letter-spacing="3.1">LE SAVOIR QUI GERME</text>
+</svg>

@@ -1,7 +1,8 @@
 import { AnimatePresence, motion } from 'framer-motion';
-import { ChevronLeft, ChevronRight, CircleHelp, Leaf, LogOut, Settings2, X } from 'lucide-react';
+import { ChevronLeft, ChevronRight, CircleHelp, LogOut, Settings2, X } from 'lucide-react';
 import { institutionalNavigation, primaryNavigation } from '../../data/navigation';
 import type { NavigationKey, UserRole } from '../../types/shell';
+import { BrandLogo } from '../brand/BrandLogo';
 
 type AppSidebarProps = {
   activeKey: NavigationKey;
@@ -17,7 +18,7 @@ export function AppSidebar({ activeKey, role, collapsed, mobileOpen, onNavigate,
   return <>
     <AnimatePresence>{mobileOpen && <motion.button type="button" className="agri-mobile-scrim" aria-label="Fermer le menu" onClick={onMobileClose} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} />}</AnimatePresence>
     <aside className={['agri-sidebar', collapsed ? 'agri-sidebar-collapsed' : '', mobileOpen ? 'agri-sidebar-open' : ''].join(' ')} aria-label="Navigation principale">
-      <div className="agri-brand"><div className="agri-brand-mark"><Leaf className="h-5 w-5" /><span>+</span></div>{!collapsed && <div className="agri-brand-copy"><strong>AGRIEXPERT</strong><small>PRO · TERRITOIRES</small></div>}<button type="button" className="agri-sidebar-close" onClick={onMobileClose} aria-label="Fermer le menu"><X className="h-4 w-4" /></button></div>
+      <div className="agri-brand"><BrandLogo showName={!collapsed} descriptor="CONSEIL · TERRITOIRES" /><button type="button" className="agri-sidebar-close" onClick={onMobileClose} aria-label="Fermer le menu"><X className="h-4 w-4" /></button></div>
       <div className="agri-sidebar-scroll">
         <SidebarGroup label="Espace de travail" collapsed={collapsed}>{primaryNavigation.map((item) => <SidebarItem key={item.key} item={item} active={activeKey === item.key} collapsed={collapsed} onClick={() => { onNavigate(item.key); onMobileClose(); }} />)}</SidebarGroup>
         {(role === 'institution' || !collapsed) && <SidebarGroup label="Gouvernance" collapsed={collapsed}>{institutionalNavigation.map((item) => <SidebarItem key={item.key} item={item} active={activeKey === item.key} collapsed={collapsed} onClick={() => { onNavigate(item.key); onMobileClose(); }} />)}</SidebarGroup>}
