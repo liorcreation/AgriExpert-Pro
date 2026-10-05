@@ -51,6 +51,31 @@
   }
 }
 
+/* Readability pass — keep the premium density while making every label comfortable to read. */
+.agri-main [class*="text-[7px]"], .agri-main [class*="text-[8px]"] { font-size: 0.6875rem !important; line-height: 1.35 !important; }
+.agri-main [class*="text-[9px]"], .agri-main [class*="text-[10px]"] { font-size: 0.75rem !important; line-height: 1.4 !important; }
+.agri-main [class*="text-[11px]"], .agri-main .text-xs { font-size: 0.8125rem !important; line-height: 1.45 !important; }
+.agri-app .agri-sidebar-item-content strong { font-size: 0.8125rem; }
+.agri-app .agri-sidebar-item-content small, .agri-app .agri-sidebar-sos small, .agri-app .agri-sidebar-account small, .agri-app .agri-network-copy small { font-size: 0.6875rem; line-height: 1.35; }
+.agri-app .agri-territory-copy small, .agri-app .agri-sidebar-group > p { font-size: 0.625rem; }
+.agri-app .agri-territory-copy strong, .agri-app .agri-network-copy strong, .agri-app .agri-sidebar-account strong { font-size: 0.75rem; }
+.agri-app .agri-sidebar-tools button, .agri-app .agri-sidebar-logout, .agri-app .agri-sidebar-collapse { font-size: 0.6875rem; }
+.agri-app .agri-command-button, .agri-app .agri-breadcrumb { font-size: 0.8125rem; }
+.agri-app .agri-command-button kbd, .agri-app .agri-compact-select select { font-size: 0.6875rem; }
+.agri-main .agri-eyebrow, .agri-main .agri-section-kicker, .agri-main .agri-panel-kicker { font-size: 0.6875rem; }
+.agri-main .agri-intro { font-size: 0.875rem; line-height: 1.6; }
+.agri-main .agri-text-link, .agri-main .agri-live-label, .agri-main .agri-section-context { font-size: 0.75rem; }
+.agri-main .agri-metric-copy > span, .agri-main .agri-metric-copy small, .agri-main .agri-pulse-stats span, .agri-main .agri-pulse-legend, .agri-main .agri-pulse-change, .agri-main .agri-chart-labels, .agri-main .agri-agenda-item time, .agri-main .agri-agenda-item div span { font-size: 0.6875rem; }
+.agri-main .agri-hero-copy > p, .agri-main .agri-tool-card p { font-size: 0.8125rem; line-height: 1.55; }
+.agri-main .agri-hero-badge, .agri-main .agri-hero-primary, .agri-main .agri-hero-voice, .agri-main .agri-soft-action, .agri-main .agri-primary-button, .agri-main .agri-outline-button, .agri-main .agri-tool-action { font-size: 0.75rem; }
+.agri-main .agri-resource-page p, .agri-main .agri-guides-page p, .agri-main .agri-directory-page p, .agri-main .agri-sos-page p, .agri-main .agri-feed-page p { line-height: 1.55; }
+.agri-main .agri-resource-page button, .agri-main .agri-guides-page button, .agri-main .agri-directory-page button, .agri-main .agri-sos-page button, .agri-main .agri-feed-page button { letter-spacing: 0; }
+.agri-main .agri-resource-category, .agri-main .agri-resource-tag, .agri-main .agri-resource-meta, .agri-main .agri-expert-location, .agri-main .agri-expert-tags span, .agri-main .agri-expert-rating, .agri-main .agri-available, .agri-main .agri-unavailable { font-size: 0.6875rem; }
+.agri-main .agri-guides-eyebrow, .agri-main .agri-guides-hero-meta, .agri-main .agri-guides-section-kicker, .agri-main .agri-guides-status, .agri-main .agri-guides-filters button, .agri-main .agri-guides-result-row, .agri-main .agri-guide-feature-kicker, .agri-main .agri-guide-feature-footer, .agri-main .agri-guide-timeline small { font-size: 0.6875rem; }
+.agri-main .agri-directory-eyebrow, .agri-main .agri-directory-hero-meta, .agri-main .agri-directory-section-kicker, .agri-main .agri-directory-status, .agri-main .agri-directory-filters button, .agri-main .agri-directory-result-row, .agri-main .agri-directory-card-location, .agri-main .agri-directory-card-tags span, .agri-main .agri-directory-response, .agri-main .agri-directory-rating, .agri-main .agri-directory-online-label, .agri-main .agri-directory-away-label { font-size: 0.6875rem; }
+.agri-main .agri-institutional-section-kicker, .agri-main .agri-institutional-context p, .agri-main .agri-institutional-select select, .agri-main .agri-institutional-periods button, .agri-main .agri-institutional-export, .agri-main .agri-institutional-kpi-label, .agri-main .agri-institutional-kpi small, .agri-main .agri-institutional-alert-level, .agri-main .agri-institutional-alert-content p, .agri-main .agri-institutional-alert-content small { font-size: 0.6875rem; }
+.agri-main .agri-institutional-card-head p, .agri-main .agri-institutional-live, .agri-main .agri-institutional-map-legend, .agri-main .agri-institutional-improvement { font-size: 0.6875rem; }
+
 @layer components {
   .ag-glass {
     @apply border border-white/60 bg-white/70 shadow-glass backdrop-blur-glass dark:border-white/10 dark:bg-obsidian-800/70 dark:shadow-soft-dark;
