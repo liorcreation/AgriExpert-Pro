@@ -1,5 +1,5 @@
 import { AnimatePresence, motion } from 'framer-motion';
-import { Activity, ChevronLeft, ChevronRight, CircleHelp, LogOut, MapPin, Settings2, Siren, X } from 'lucide-react';
+import { Activity, ChevronLeft, ChevronRight, CircleHelp, LogOut, MapPin, Settings2, X } from 'lucide-react';
 import { institutionalNavigation, primaryNavigation, roleLabels } from '../../data/navigation';
 import type { NavigationKey, UserRole } from '../../types/shell';
 import { BrandLogo } from '../brand/BrandLogo';
@@ -23,11 +23,6 @@ export function AppSidebar({ activeKey, role, collapsed, mobileOpen, onNavigate,
         <div className="agri-brand"><BrandLogo showName={!compact} descriptor="CONSEIL · TERRITOIRES" /><button type="button" className="agri-sidebar-close" onClick={onMobileClose} aria-label="Fermer le menu"><X className="h-4 w-4" /></button></div>
         {!compact && <div className="agri-sidebar-territory"><span className="agri-territory-icon"><MapPin className="h-4 w-4" /></span><span className="agri-territory-copy"><small>VOTRE TERRITOIRE</small><strong>Ouagadougou <i>·</i> Burkina Faso</strong></span><span className="agri-territory-pulse" aria-label="Zone active" /> </div>}
         {compact && <div className="agri-sidebar-territory agri-sidebar-territory-compact" title="Ouagadougou · Burkina Faso"><span className="agri-territory-icon"><MapPin className="h-4 w-4" /></span><span className="agri-territory-pulse" /></div>}
-        <button type="button" className="agri-sidebar-sos" onClick={() => { onNavigate('emergency'); onMobileClose(); }} aria-label="Ouvrir le centre d’urgence SOS">
-          <span className="agri-sidebar-sos-icon"><Siren className="h-[17px] w-[17px]" /></span>
-          {!compact && <span><strong>Centre SOS</strong><small>Assistance prioritaire</small></span>}
-          {!compact && <ChevronRight className="agri-sidebar-sos-arrow h-4 w-4" />}
-        </button>
       </div>
       <div className="agri-sidebar-scroll">
         <SidebarGroup label="Votre espace" collapsed={compact}>{primaryNavigation.map((item, index) => <SidebarItem key={item.key} item={item} active={activeKey === item.key} collapsed={compact} index={index} onClick={() => { onNavigate(item.key); onMobileClose(); }} />)}</SidebarGroup>
