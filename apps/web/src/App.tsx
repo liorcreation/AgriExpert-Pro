@@ -35,6 +35,7 @@ import {
 import { AppSidebar } from './components/shell/AppSidebar';
 import { BrandIntro } from './components/brand/BrandIntro';
 import { InstallAppButton } from './components/shell/InstallAppButton';
+import { AuthPage, type AuthSession } from './features/auth/AuthPage';
 import type { LanguageCode, NavigationKey, UserRole } from './types/shell';
 
 const EmergencyPage = lazy(async () => ({ default: (await import('./features/emergencies/EmergencyPage')).EmergencyPage }));
@@ -51,10 +52,21 @@ function shouldShowBrandIntro() {
   }
 }
 
+function readAuthSession(): AuthSession | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    const stored = window.localStorage.getItem('agriexpert-auth-session');
+    return stored ? JSON.parse(stored) as AuthSession : null;
+  } catch {
+    return null;
+  }
+}
+
 function App() {
+  const [authSession, setAuthSession] = useState<AuthSession | null>(readAuthSession);
   const [showBrandIntro, setShowBrandIntro] = useState(shouldShowBrandIntro);
   const [activeKey, setActiveKey] = useState<NavigationKey>('overview');
-  const [role, setRole] = useState<UserRole>('producer');
+  const [role, setRole] = useState<UserRole>(() => readAuthSession()?.role ?? 'producer');
   const [language, setLanguage] = useState<LanguageCode>('fr');
   const [voiceEnabled, setVoiceEnabled] = useState(true);
   const [darkMode, setDarkMode] = useState(false);
@@ -76,6 +88,18 @@ function App() {
     try { window.sessionStorage.setItem('agriexpert-brand-intro-seen', 'true'); } catch { /* Storage can be unavailable in private contexts. */ }
     setShowBrandIntro(false);
   }, []);
+  const completeAuth = useCallback((session: AuthSession) => {
+    try { window.localStorage.setItem('agriexpert-auth-session', JSON.stringify(session)); } catch { /* Storage can be unavailable in private contexts. */ }
+    setAuthSession(session);
+    setRole(session.role);
+  }, []);
+  const logout = useCallback(() => {
+    try { window.localStorage.removeItem('agriexpert-auth-session'); } catch { /* Storage can be unavailable in private contexts. */ }
+    setAuthSession(null);
+    setOverlay(null);
+  }, []);
+
+  if (!authSession) return <AuthPage onAuthenticated={completeAuth} />;
 
   return (
     <div className="agri-app">
@@ -86,7 +110,7 @@ function App() {
         <TopBar role={role} language={language} voiceEnabled={voiceEnabled} darkMode={darkMode} onMenuOpen={() => setMobileSidebarOpen(true)} onRoleChange={setRole} onLanguageChange={setLanguage} onVoiceToggle={() => setVoiceEnabled((current) => !current)} onThemeToggle={() => setDarkMode((current) => !current)} onSearch={() => setOverlay('search')} onNotifications={() => setOverlay(overlay === 'notifications' ? null : 'notifications')} onProfile={() => setOverlay(overlay === 'profile' ? null : 'profile')} />
         {overlay === 'search' && <CommandPalette onClose={() => setOverlay(null)} navigate={(key) => { navigate(key); setOverlay(null); }} />}
         {overlay === 'notifications' && <NotificationPanel onClose={() => setOverlay(null)} />}
-        {overlay === 'profile' && <ProfilePanel role={role} onClose={() => setOverlay(null)} />}
+        {overlay === 'profile' && <ProfilePanel role={role} onClose={() => setOverlay(null)} onLogout={logout} />}
         <main className="agri-main"><div className="agri-main-inner">
           {activeKey === 'overview' ? <Overview navigate={navigate} voiceEnabled={voiceEnabled} /> : activeKey === 'emergency' ? <LazyPage label="Ouverture du centre SOS…"><EmergencyPage onBack={() => navigate('overview')} /></LazyPage> : activeKey === 'feed' ? <LazyPage label="Chargement du fil d’échanges…"><FeedPage onBack={() => navigate('overview')} /></LazyPage> : activeKey === 'institutional' ? <LazyPage label="Chargement du cockpit institutionnel…"><InstitutionalDashboard onBack={() => navigate('overview')} /></LazyPage> : activeKey === 'guides' ? <LazyPage label="Chargement des fiches techniques…"><ResourcesPage kind="guides" onBack={() => navigate('overview')} onNavigate={navigate} /></LazyPage> : activeKey === 'directory' ? <LazyPage label="Ouverture de l’annuaire…"><ResourcesPage kind="directory" onBack={() => navigate('overview')} onNavigate={navigate} /></LazyPage> : <Overview navigate={navigate} voiceEnabled={voiceEnabled} />}
         </div></main>
@@ -180,9 +204,9 @@ function NotificationItem({ tone, title, detail, time }: { tone: 'green' | 'gold
   return <div className="agri-notification-item"><span className={`agri-notification-dot agri-notification-${tone}`} /><div><strong>{title}</strong><p>{detail}</p><small>{time}</small></div></div>;
 }
 
-function ProfilePanel({ role, onClose }: { role: UserRole; onClose: () => void }) {
+function ProfilePanel({ role, onClose, onLogout }: { role: UserRole; onClose: () => void; onLogout: () => void }) {
   const roleLabel = role === 'producer' ? 'Producteur' : role === 'expert' ? 'Expert' : 'Institution';
-  return <div className="agri-floating-panel agri-profile-panel"><div className="agri-floating-head"><div className="agri-profile-heading"><span>SD</span><div><strong>Steve D.</strong><small>{roleLabel} · Compte actif</small></div></div><button type="button" onClick={onClose} aria-label="Fermer"><X className="h-4 w-4" /></button></div><div className="agri-profile-menu"><button type="button"><ShieldCheck className="h-4 w-4" /> Mon espace sécurisé <ArrowRight className="ml-auto h-3.5 w-3.5" /></button><button type="button"><Settings2 className="h-4 w-4" /> Préférences <ArrowRight className="ml-auto h-3.5 w-3.5" /></button><button type="button" className="agri-profile-logout"><span>↗</span> Se déconnecter</button></div></div>;
+  return <div className="agri-floating-panel agri-profile-panel"><div className="agri-floating-head"><div className="agri-profile-heading"><span>SD</span><div><strong>Steve D.</strong><small>{roleLabel} · Compte actif</small></div></div><button type="button" onClick={onClose} aria-label="Fermer"><X className="h-4 w-4" /></button></div><div className="agri-profile-menu"><button type="button"><ShieldCheck className="h-4 w-4" /> Mon espace sécurisé <ArrowRight className="ml-auto h-3.5 w-3.5" /></button><button type="button"><Settings2 className="h-4 w-4" /> Préférences <ArrowRight className="ml-auto h-3.5 w-3.5" /></button><button type="button" className="agri-profile-logout" onClick={onLogout}><span>↗</span> Se déconnecter</button></div></div>;
 }
 
 function LazyPage({ label, children }: { label: string; children: React.ReactNode }) {
