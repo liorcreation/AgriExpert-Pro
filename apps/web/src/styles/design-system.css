@@ -51,6 +51,31 @@
   }
 }
 
+/* Final type scale — comfortable reading on field devices and desktop screens. */
+body { font-size: 16px; }
+.agri-sidebar-item-content strong { font-size: .875rem; }
+.agri-sidebar-item-content small, .agri-sidebar-sos small, .agri-sidebar-account small, .agri-network-copy small { font-size: .75rem; }
+.agri-territory-copy small, .agri-sidebar-group > p { font-size: .6875rem; }
+.agri-territory-copy strong, .agri-network-copy strong, .agri-sidebar-account strong { font-size: .8125rem; }
+.agri-sidebar-tools button, .agri-sidebar-logout, .agri-sidebar-collapse { font-size: .75rem; }
+.agri-command-button, .agri-breadcrumb { font-size: .875rem; }
+.agri-command-button kbd, .agri-compact-select select { font-size: .75rem; }
+.agri-main .agri-eyebrow, .agri-main .agri-section-kicker, .agri-main .agri-panel-kicker { font-size: .75rem; }
+.agri-main .agri-intro { font-size: 1rem; }
+.agri-main .agri-text-link, .agri-main .agri-live-label, .agri-main .agri-section-context { font-size: .8125rem; }
+.agri-main .agri-metric-copy > span, .agri-main .agri-metric-copy small, .agri-main .agri-pulse-stats span, .agri-main .agri-pulse-legend, .agri-main .agri-pulse-change, .agri-main .agri-chart-labels, .agri-main .agri-agenda-item time, .agri-main .agri-agenda-item div span { font-size: .75rem; }
+.agri-main .agri-hero-copy > p, .agri-main .agri-tool-card p { font-size: .875rem; }
+.agri-main .agri-hero-badge, .agri-main .agri-hero-primary, .agri-main .agri-hero-voice, .agri-main .agri-soft-action, .agri-main .agri-primary-button, .agri-main .agri-outline-button, .agri-main .agri-tool-action { font-size: .8125rem; }
+.agri-main .agri-resource-category, .agri-main .agri-resource-tag, .agri-main .agri-resource-meta, .agri-main .agri-expert-location, .agri-main .agri-expert-tags span, .agri-main .agri-expert-rating, .agri-main .agri-available, .agri-main .agri-unavailable { font-size: .75rem; }
+.agri-main .agri-guides-eyebrow, .agri-main .agri-guides-hero-meta, .agri-main .agri-guides-section-kicker, .agri-main .agri-guides-status, .agri-main .agri-guides-filters button, .agri-main .agri-guides-result-row, .agri-main .agri-guide-feature-kicker, .agri-main .agri-guide-feature-footer, .agri-main .agri-guide-timeline small { font-size: .75rem; }
+.agri-main .agri-directory-eyebrow, .agri-main .agri-directory-hero-meta, .agri-main .agri-directory-section-kicker, .agri-main .agri-directory-status, .agri-main .agri-directory-filters button, .agri-main .agri-directory-result-row, .agri-main .agri-directory-card-location, .agri-main .agri-directory-card-tags span, .agri-main .agri-directory-response, .agri-main .agri-directory-rating, .agri-main .agri-directory-online-label, .agri-main .agri-directory-away-label { font-size: .75rem; }
+.agri-main .agri-institutional-section-kicker, .agri-main .agri-institutional-context p, .agri-main .agri-institutional-select select, .agri-main .agri-institutional-periods button, .agri-main .agri-institutional-export, .agri-main .agri-institutional-kpi-label, .agri-main .agri-institutional-kpi small, .agri-main .agri-institutional-alert-level, .agri-main .agri-institutional-alert-content p, .agri-main .agri-institutional-alert-content small, .agri-main .agri-institutional-card-head p, .agri-main .agri-institutional-live, .agri-main .agri-institutional-map-legend, .agri-main .agri-institutional-improvement { font-size: .75rem; }
+.agri-auth-card-head p { font-size: .875rem; }
+.agri-auth-card-head h2 { font-size: 2rem; }
+.agri-auth-card, .agri-auth-mode button, .agri-auth-form label > span, .agri-auth-field-heading > span, .agri-auth-methods button, .agri-auth-input input, .agri-auth-submit, .agri-auth-forgot, .agri-auth-guest { font-size: .8125rem; }
+.agri-auth-role strong { font-size: .75rem; }.agri-auth-role small { font-size: .6875rem; }.agri-auth-trust { font-size: .6875rem; }
+@media (max-width: 640px) { .agri-sidebar-item-content strong { font-size: .8125rem; }.agri-sidebar-item-content small { font-size: .6875rem; }.agri-auth-card-head h2 { font-size: 1.7rem; }.agri-auth-card-head p { font-size: .8125rem; } }
+
 /* Readability pass — keep the premium density while making every label comfortable to read. */
 .agri-main [class*="text-[7px]"], .agri-main [class*="text-[8px]"] { font-size: 0.6875rem !important; line-height: 1.35 !important; }
 .agri-main [class*="text-[9px]"], .agri-main [class*="text-[10px]"] { font-size: 0.75rem !important; line-height: 1.4 !important; }
@@ -630,3 +655,22 @@
   .agri-intro-footer { gap: 8px; font-size: 7px; }
   .agri-intro-skip { top: max(16px,env(safe-area-inset-top)); right: max(15px,env(safe-area-inset-right)); min-height: 38px; padding: 0 12px; font-size: 10px; }
 }
+
+/* Readable production scale — final cascade override. */
+.agri-app .agri-sidebar-item-content strong { font-size: .875rem; }
+.agri-app .agri-sidebar-item-content small, .agri-app .agri-sidebar-sos small, .agri-app .agri-sidebar-account small, .agri-app .agri-network-copy small { font-size: .75rem; line-height: 1.4; }
+.agri-app .agri-territory-copy small, .agri-app .agri-sidebar-group > p { font-size: .6875rem; }
+.agri-app .agri-territory-copy strong, .agri-app .agri-network-copy strong, .agri-app .agri-sidebar-account strong { font-size: .8125rem; }
+.agri-app .agri-sidebar-tools button, .agri-app .agri-sidebar-logout, .agri-app .agri-sidebar-collapse { font-size: .75rem; }
+.agri-app .agri-command-button, .agri-app .agri-breadcrumb { font-size: .875rem; }
+.agri-app .agri-command-button kbd, .agri-app .agri-compact-select select { font-size: .75rem; }
+.agri-main .agri-eyebrow, .agri-main .agri-section-kicker, .agri-main .agri-panel-kicker { font-size: .75rem; }
+.agri-main .agri-intro { font-size: 1rem; line-height: 1.65; }
+.agri-main .agri-text-link, .agri-main .agri-live-label, .agri-main .agri-section-context { font-size: .8125rem; }
+.agri-main .agri-metric-copy > span, .agri-main .agri-metric-copy small, .agri-main .agri-pulse-stats span, .agri-main .agri-pulse-legend, .agri-main .agri-pulse-change, .agri-main .agri-chart-labels, .agri-main .agri-agenda-item time, .agri-main .agri-agenda-item div span { font-size: .75rem; }
+.agri-main .agri-hero-copy > p, .agri-main .agri-tool-card p { font-size: .875rem; line-height: 1.6; }
+.agri-main .agri-hero-badge, .agri-main .agri-hero-primary, .agri-main .agri-hero-voice, .agri-main .agri-soft-action, .agri-main .agri-primary-button, .agri-main .agri-outline-button, .agri-main .agri-tool-action { font-size: .8125rem; }
+.agri-main .agri-resource-category, .agri-main .agri-resource-tag, .agri-main .agri-resource-meta, .agri-main .agri-expert-location, .agri-main .agri-expert-tags span, .agri-main .agri-expert-rating, .agri-main .agri-available, .agri-main .agri-unavailable, .agri-main .agri-guides-eyebrow, .agri-main .agri-guides-hero-meta, .agri-main .agri-guides-section-kicker, .agri-main .agri-guides-status, .agri-main .agri-guides-filters button, .agri-main .agri-guides-result-row, .agri-main .agri-guide-feature-kicker, .agri-main .agri-guide-feature-footer, .agri-main .agri-guide-timeline small, .agri-main .agri-directory-eyebrow, .agri-main .agri-directory-hero-meta, .agri-main .agri-directory-section-kicker, .agri-main .agri-directory-status, .agri-main .agri-directory-filters button, .agri-main .agri-directory-result-row, .agri-main .agri-directory-card-location, .agri-main .agri-directory-card-tags span, .agri-main .agri-directory-response, .agri-main .agri-directory-rating, .agri-main .agri-directory-online-label, .agri-main .agri-directory-away-label { font-size: .75rem; }
+.agri-main .agri-institutional-section-kicker, .agri-main .agri-institutional-context p, .agri-main .agri-institutional-select select, .agri-main .agri-institutional-periods button, .agri-main .agri-institutional-export, .agri-main .agri-institutional-kpi-label, .agri-main .agri-institutional-kpi small, .agri-main .agri-institutional-alert-level, .agri-main .agri-institutional-alert-content p, .agri-main .agri-institutional-alert-content small, .agri-main .agri-institutional-card-head p, .agri-main .agri-institutional-live, .agri-main .agri-institutional-map-legend, .agri-main .agri-institutional-improvement { font-size: .75rem; }
+.agri-auth-card-head p { font-size: .875rem; }.agri-auth-card-head h2 { font-size: 2rem; }.agri-auth-mode button, .agri-auth-form label > span, .agri-auth-field-heading > span, .agri-auth-methods button, .agri-auth-input input, .agri-auth-submit, .agri-auth-forgot, .agri-auth-guest { font-size: .8125rem; }.agri-auth-role strong { font-size: .75rem; }.agri-auth-role small, .agri-auth-trust { font-size: .6875rem; }
+@media (max-width: 640px) { .agri-auth-card-head h2 { font-size: 1.7rem; }.agri-auth-card-head p { font-size: .8125rem; }.agri-app .agri-sidebar-item-content strong { font-size: .8125rem; }.agri-app .agri-sidebar-item-content small { font-size: .6875rem; } }
