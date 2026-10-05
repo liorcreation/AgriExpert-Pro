@@ -1,6 +1,6 @@
 import { AnimatePresence, motion } from 'framer-motion';
 import { Activity, ChevronLeft, ChevronRight, CircleHelp, LogOut, MapPin, Settings2, X } from 'lucide-react';
-import { institutionalNavigation, primaryNavigation, roleLabels } from '../../data/navigation';
+import { institutionalNavigation, primaryNavigation, roleLabels, roleNavigation, roleNavigationLabels } from '../../data/navigation';
 import type { NavigationKey, UserRole } from '../../types/shell';
 import { BrandLogo } from '../brand/BrandLogo';
 
@@ -16,6 +16,8 @@ type AppSidebarProps = {
 
 export function AppSidebar({ activeKey, role, collapsed, mobileOpen, onNavigate, onCollapseToggle, onMobileClose }: AppSidebarProps) {
   const compact = collapsed && !mobileOpen;
+  const navigation = roleNavigation[role];
+  const showInstitutional = role === 'institution' && navigation.every((item) => item.key !== 'institutional');
   return <>
     <AnimatePresence>{mobileOpen && <motion.button type="button" className="agri-mobile-scrim" aria-label="Fermer le menu" onClick={onMobileClose} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} />}</AnimatePresence>
     <aside className={['agri-sidebar', compact ? 'agri-sidebar-collapsed' : '', mobileOpen ? 'agri-sidebar-open' : ''].join(' ')} aria-label="Navigation principale">
@@ -25,8 +27,8 @@ export function AppSidebar({ activeKey, role, collapsed, mobileOpen, onNavigate,
         {compact && <div className="agri-sidebar-territory agri-sidebar-territory-compact" title="Ouagadougou · Burkina Faso"><span className="agri-territory-icon"><MapPin className="h-4 w-4" /></span><span className="agri-territory-pulse" /></div>}
       </div>
       <div className="agri-sidebar-scroll">
-        <SidebarGroup label="Votre espace" collapsed={compact}>{primaryNavigation.map((item, index) => <SidebarItem key={item.key} item={item} active={activeKey === item.key} collapsed={compact} index={index} onClick={() => { onNavigate(item.key); onMobileClose(); }} />)}</SidebarGroup>
-        {(role === 'institution' || !compact) && <SidebarGroup label="Pilotage national" collapsed={compact}>{institutionalNavigation.map((item, index) => <SidebarItem key={item.key} item={item} active={activeKey === item.key} collapsed={compact} index={index + primaryNavigation.length} onClick={() => { onNavigate(item.key); onMobileClose(); }} />)}</SidebarGroup>}
+        <SidebarGroup label={roleNavigationLabels[role]} collapsed={compact}>{navigation.map((item, index) => <SidebarItem key={`${item.key}-${role}`} item={item} active={activeKey === item.key} collapsed={compact} index={index} onClick={() => { onNavigate(item.key); onMobileClose(); }} />)}</SidebarGroup>
+        {showInstitutional && <SidebarGroup label="Pilotage national" collapsed={compact}>{institutionalNavigation.map((item, index) => <SidebarItem key={item.key} item={item} active={activeKey === item.key} collapsed={compact} index={index + navigation.length} onClick={() => { onNavigate(item.key); onMobileClose(); }} />)}</SidebarGroup>}
       </div>
       <div className="agri-sidebar-footer">
         <div className="agri-sidebar-network"><span className="agri-network-mark"><Activity className="h-4 w-4" /></span><span className="agri-network-copy">{!compact && <><strong>Réseau actif</strong><small>148 experts disponibles</small></>}</span><i title="Tous les services fonctionnent" />

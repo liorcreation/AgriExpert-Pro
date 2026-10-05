@@ -9,7 +9,7 @@ import {
   Siren,
   UsersRound,
 } from 'lucide-react';
-import type { NavigationKey } from '../types/shell';
+import type { NavigationKey, UserRole } from '../types/shell';
 
 export type NavigationItem = {
   key: NavigationKey;
@@ -62,6 +62,26 @@ export const institutionalNavigation: NavigationItem[] = [
     icon: Building2,
   },
 ];
+
+const expertNavigation: NavigationItem[] = [
+  { key: 'overview', label: 'Mon espace expert', description: 'Votre activité et vos priorités', icon: LayoutDashboard },
+  { key: 'feed', label: 'Demandes à traiter', description: 'Conseils et réponses à qualifier', icon: UsersRound, badge: '12' },
+  { key: 'emergency', label: 'Interventions SOS', description: 'Urgences proches à accompagner', icon: Siren, badge: '4' },
+  { key: 'guides', label: 'Base technique', description: 'Référentiels et itinéraires validés', icon: BookOpen },
+  { key: 'directory', label: 'Réseau d’experts', description: 'Spécialistes et relais terrain', icon: Compass },
+];
+
+const institutionNavigation: NavigationItem[] = [
+  { key: 'overview', label: 'Vue de supervision', description: 'Les signaux essentiels du territoire', icon: LayoutDashboard },
+  { key: 'institutional', label: 'Pilotage institutionnel', description: 'Indicateurs et alertes territoriales', icon: Building2 },
+  { key: 'emergency', label: 'Veille sanitaire', description: 'Foyers et urgences prioritaires', icon: Siren, badge: '67' },
+  { key: 'directory', label: 'Réseau mobilisable', description: 'Experts et laboratoires disponibles', icon: Compass },
+  { key: 'guides', label: 'Référentiels nationaux', description: 'Fiches et protocoles de campagne', icon: BookOpen },
+];
+
+export const roleNavigation: Record<UserRole, NavigationItem[]> = { producer: primaryNavigation, expert: expertNavigation, institution: institutionNavigation };
+
+export const roleNavigationLabels: Record<UserRole, string> = { producer: 'Votre espace', expert: 'Votre activité', institution: 'Supervision nationale' };
 
 export const roleLabels = {
   producer: 'Producteur',

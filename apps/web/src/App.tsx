@@ -2,30 +2,41 @@ import { lazy, Suspense, useCallback, useEffect, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
   Activity,
+  AlertTriangle,
   ArrowRight,
   ArrowUpRight,
   Bell,
   BookOpen,
+  Building2,
+  CalendarClock,
   CalendarDays,
   Check,
+  CheckCircle2,
   ChevronDown,
   CloudSun,
   Command,
   Compass,
+  ClipboardCheck,
+  FileText,
   Leaf,
   MapPin,
+  MapPinned,
   Menu,
   MessageCircle,
+  MessageSquareText,
   Mic2,
   Moon,
   MoreHorizontal,
   Plus,
+  Radio,
   Search,
   Settings2,
   ShieldCheck,
   Siren,
+  Stethoscope,
   Sparkles,
   Sun,
+  Target,
   TrendingUp,
   UsersRound,
   Volume2,
@@ -93,6 +104,17 @@ function App() {
     setAuthSession(session);
     setRole(session.role);
   }, []);
+  const updateRole = useCallback((nextRole: UserRole) => {
+    setRole(nextRole);
+    setActiveKey('overview');
+    setMobileSidebarOpen(false);
+    setAuthSession((current) => {
+      if (!current) return current;
+      const updated = { ...current, role: nextRole };
+      try { window.localStorage.setItem('agriexpert-auth-session', JSON.stringify(updated)); } catch { /* Storage can be unavailable in private contexts. */ }
+      return updated;
+    });
+  }, []);
   const logout = useCallback(() => {
     try { window.localStorage.removeItem('agriexpert-auth-session'); } catch { /* Storage can be unavailable in private contexts. */ }
     setAuthSession(null);
@@ -107,12 +129,12 @@ function App() {
       <div className="agri-atmosphere agri-atmosphere-one" /><div className="agri-atmosphere agri-atmosphere-two" />
       <AppSidebar activeKey={activeKey} role={role} collapsed={sidebarCollapsed} mobileOpen={mobileSidebarOpen} onNavigate={navigate} onCollapseToggle={() => setSidebarCollapsed((current) => !current)} onMobileClose={() => setMobileSidebarOpen(false)} />
       <div className="agri-workspace">
-        <TopBar role={role} language={language} voiceEnabled={voiceEnabled} darkMode={darkMode} onMenuOpen={() => setMobileSidebarOpen(true)} onRoleChange={setRole} onLanguageChange={setLanguage} onVoiceToggle={() => setVoiceEnabled((current) => !current)} onThemeToggle={() => setDarkMode((current) => !current)} onSearch={() => setOverlay('search')} onNotifications={() => setOverlay(overlay === 'notifications' ? null : 'notifications')} onProfile={() => setOverlay(overlay === 'profile' ? null : 'profile')} />
+        <TopBar role={role} language={language} voiceEnabled={voiceEnabled} darkMode={darkMode} onMenuOpen={() => setMobileSidebarOpen(true)} onRoleChange={updateRole} onLanguageChange={setLanguage} onVoiceToggle={() => setVoiceEnabled((current) => !current)} onThemeToggle={() => setDarkMode((current) => !current)} onSearch={() => setOverlay('search')} onNotifications={() => setOverlay(overlay === 'notifications' ? null : 'notifications')} onProfile={() => setOverlay(overlay === 'profile' ? null : 'profile')} />
         {overlay === 'search' && <CommandPalette onClose={() => setOverlay(null)} navigate={(key) => { navigate(key); setOverlay(null); }} />}
         {overlay === 'notifications' && <NotificationPanel onClose={() => setOverlay(null)} />}
-        {overlay === 'profile' && <ProfilePanel role={role} onClose={() => setOverlay(null)} onLogout={logout} />}
+        {overlay === 'profile' && <ProfilePanel role={role} name={authSession.name} onClose={() => setOverlay(null)} onLogout={logout} />}
         <main className="agri-main"><div className="agri-main-inner">
-          {activeKey === 'overview' ? <Overview navigate={navigate} voiceEnabled={voiceEnabled} /> : activeKey === 'emergency' ? <LazyPage label="Ouverture du centre SOS…"><EmergencyPage onBack={() => navigate('overview')} /></LazyPage> : activeKey === 'feed' ? <LazyPage label="Chargement du fil d’échanges…"><FeedPage onBack={() => navigate('overview')} /></LazyPage> : activeKey === 'institutional' ? <LazyPage label="Chargement du cockpit institutionnel…"><InstitutionalDashboard onBack={() => navigate('overview')} /></LazyPage> : activeKey === 'guides' ? <LazyPage label="Chargement des fiches techniques…"><ResourcesPage kind="guides" onBack={() => navigate('overview')} onNavigate={navigate} /></LazyPage> : activeKey === 'directory' ? <LazyPage label="Ouverture de l’annuaire…"><ResourcesPage kind="directory" onBack={() => navigate('overview')} onNavigate={navigate} /></LazyPage> : <Overview navigate={navigate} voiceEnabled={voiceEnabled} />}
+          {activeKey === 'overview' ? <Overview navigate={navigate} voiceEnabled={voiceEnabled} role={role} name={authSession.name} /> : activeKey === 'emergency' ? <LazyPage label="Ouverture du centre SOS…"><EmergencyPage onBack={() => navigate('overview')} /></LazyPage> : activeKey === 'feed' ? <LazyPage label="Chargement du fil d’échanges…"><FeedPage onBack={() => navigate('overview')} /></LazyPage> : activeKey === 'institutional' ? <LazyPage label="Chargement du cockpit institutionnel…"><InstitutionalDashboard onBack={() => navigate('overview')} /></LazyPage> : activeKey === 'guides' ? <LazyPage label="Chargement des fiches techniques…"><ResourcesPage kind="guides" onBack={() => navigate('overview')} onNavigate={navigate} /></LazyPage> : activeKey === 'directory' ? <LazyPage label="Ouverture de l’annuaire…"><ResourcesPage kind="directory" onBack={() => navigate('overview')} onNavigate={navigate} /></LazyPage> : <Overview navigate={navigate} voiceEnabled={voiceEnabled} role={role} name={authSession.name} />}
         </div></main>
       </div>
     </div>
@@ -127,11 +149,13 @@ function CompactSelect({ value, onChange, options }: { value: string; onChange: 
   return <div className="agri-compact-select"><select value={value} onChange={(event) => onChange(event.target.value)} aria-label="Préférence">{options.map(([option, label]) => <option key={option} value={option}>{label}</option>)}</select><ChevronDown className="h-3 w-3" /></div>;
 }
 
-function Overview({ navigate, voiceEnabled }: { navigate: (key: NavigationKey) => void; voiceEnabled: boolean }) {
+function Overview({ navigate, voiceEnabled, role, name }: { navigate: (key: NavigationKey) => void; voiceEnabled: boolean; role: UserRole; name: string }) {
+  if (role === 'expert') return <ExpertOverview navigate={navigate} name={name} />;
+  if (role === 'institution') return <InstitutionOverview navigate={navigate} name={name} />;
   const today = new Intl.DateTimeFormat('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' }).format(new Date());
   return <div className="agri-overview">
     <motion.div className="agri-welcome-row" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: .35 }}>
-      <div><div className="agri-eyebrow"><span className="agri-eyebrow-dot" /> {today} <span className="agri-eyebrow-separator">·</span> Burkina Faso</div><h1 className="agri-display-title">Bonjour Steve <span className="agri-wave">✦</span></h1><p className="agri-intro">Votre activité agricole, vos experts et les prochaines actions utiles — au même endroit.</p></div>
+      <div><div className="agri-eyebrow"><span className="agri-eyebrow-dot" /> {today} <span className="agri-eyebrow-separator">·</span> Burkina Faso</div><h1 className="agri-display-title">Bonjour {name.split(' ')[0]} <span className="agri-wave">✦</span></h1><p className="agri-intro">Votre activité agricole, vos experts et les prochaines actions utiles — au même endroit.</p></div>
       <div className="agri-welcome-actions"><span className="agri-territory-pill"><MapPin className="h-3.5 w-3.5" /> Ouagadougou</span><button type="button" className="agri-primary-button" onClick={() => navigate('feed')}><Plus className="h-4 w-4" /> Nouvelle demande</button></div>
     </motion.div>
     <HeroAction navigate={navigate} voiceEnabled={voiceEnabled} />
@@ -182,6 +206,21 @@ function ToolGrid({ navigate }: { navigate: (key: NavigationKey) => void }) {
   return <div className="agri-tool-grid">{tools.map((tool, index) => { const Icon = tool.icon; return <motion.button key={tool.key} type="button" className={`agri-tool-card agri-tool-${tool.tone}`} onClick={() => navigate(tool.key)} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.05, duration: 0.3 }}><div className="agri-tool-top"><span className="agri-tool-number">{tool.number}</span><span className="agri-tool-icon"><Icon className="h-5 w-5" /></span></div><div><h3>{tool.title}</h3><p>{tool.text}</p></div><span className="agri-tool-action">{tool.action}<ArrowRight className="h-3.5 w-3.5" /></span></motion.button>; })}</div>;
 }
 
+function ExpertOverview({ navigate, name }: { navigate: (key: NavigationKey) => void; name: string }) {
+  const firstName = name.split(' ')[0];
+  return <div className="agri-role-overview agri-expert-overview"><motion.div className="agri-role-welcome" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}><div><div className="agri-eyebrow"><span className="agri-eyebrow-dot" /> Espace expert · Réseau actif</div><h1 className="agri-display-title">Bonjour {firstName} <span className="agri-wave">✦</span></h1><p className="agri-intro">Les demandes qui comptent pour votre territoire, réunies au même endroit.</p></div><div className="agri-welcome-actions"><span className="agri-role-status"><i /> Disponible pour répondre</span><button type="button" className="agri-primary-button" onClick={() => navigate('feed')}><MessageSquareText className="h-4 w-4" /> Voir les demandes</button></div></motion.div><section className="agri-role-hero agri-role-hero-expert"><div><span className="agri-role-hero-kicker"><Stethoscope className="h-4 w-4" /> Votre impact terrain</span><h2>Chaque réponse<br /><em>fait avancer une parcelle.</em></h2><p>Retrouvez les producteurs en attente, priorisez les urgences et partagez votre expertise avec précision.</p><button type="button" className="agri-role-hero-button" onClick={() => navigate('feed')}>Traiter les demandes <ArrowRight className="h-4 w-4" /></button></div><div className="agri-role-hero-visual"><div className="agri-role-hero-ring" /><div className="agri-role-hero-stat"><strong>18 min</strong><span>votre délai moyen</span></div><div className="agri-role-hero-orbit-chip"><CheckCircle2 className="h-4 w-4" /> Certification active</div></div></section><div className="agri-role-kpi-grid"><RoleKpi icon={ClipboardCheck} label="Demandes à traiter" value="12" detail="4 prioritaires" tone="green" /><RoleKpi icon={CalendarClock} label="Rendez-vous aujourd’hui" value="6" detail="prochain à 09:30" tone="gold" /><RoleKpi icon={UsersRound} label="Producteurs accompagnés" value="126" detail="+18 ce mois-ci" tone="blue" /><RoleKpi icon={TrendingUp} label="Note du réseau" value="4,9/5" detail="sur vos 74 conseils" tone="violet" /></div><div className="agri-role-content-grid"><RolePanel kicker="À traiter maintenant" title="Votre file d’expertise"><RoleQueueItem tone="red" title="Feuilles de maïs jaunissantes" detail="Awa Traoré · Agriculture · il y a 9 min" onClick={() => navigate('feed')} /><RoleQueueItem tone="gold" title="Suspicion de maladie aviaire" detail="Moussa K. · Élevage · il y a 24 min" onClick={() => navigate('feed')} /><RoleQueueItem tone="blue" title="Qualité de l’eau du bassin" detail="Issa O. · Pisciculture · il y a 41 min" onClick={() => navigate('feed')} /></RolePanel><RolePanel kicker="Votre agenda" title="Les prochains rendez-vous"><RoleAgenda time="09:30" title="Appel avec Karim Sawadogo" detail="Suivi parcelle · Ouagadougou" /><RoleAgenda time="11:00" title="Visite d’exploitation" detail="Élevage · Koubri" /><RoleAgenda time="15:30" title="Permanence réseau" detail="Questions ouvertes · En ligne" /></RolePanel></div></div>;
+}
+
+function InstitutionOverview({ navigate, name }: { navigate: (key: NavigationKey) => void; name: string }) {
+  const firstName = name.split(' ')[0];
+  return <div className="agri-role-overview agri-institution-overview"><motion.div className="agri-role-welcome" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}><div><div className="agri-eyebrow"><span className="agri-eyebrow-dot" /> Espace institution · Vue nationale</div><h1 className="agri-display-title">Bonjour {firstName} <span className="agri-wave">✦</span></h1><p className="agri-intro">Les signaux clés du territoire pour coordonner l’action publique.</p></div><div className="agri-welcome-actions"><span className="agri-role-status"><i /> Données actualisées</span><button type="button" className="agri-primary-button" onClick={() => navigate('institutional')}><Building2 className="h-4 w-4" /> Ouvrir le cockpit</button></div></motion.div><section className="agri-role-hero agri-role-hero-institution"><div><span className="agri-role-hero-kicker"><MapPinned className="h-4 w-4" /> Supervision nationale</span><h2>Voir plus loin,<br /><em>agir au bon endroit.</em></h2><p>Un cockpit unifié pour suivre les alertes, mesurer la capacité du réseau et orienter les ressources.</p><button type="button" className="agri-role-hero-button" onClick={() => navigate('institutional')}>Accéder au pilotage <ArrowRight className="h-4 w-4" /></button></div><div className="agri-role-hero-visual"><div className="agri-role-map-points"><i /><i /><i /><i /><i /></div><div className="agri-role-hero-stat"><strong>92,4%</strong><span>cas résolus</span></div><div className="agri-role-hero-orbit-chip"><Radio className="h-4 w-4" /> Réseau en direct</div></div></section><div className="agri-role-kpi-grid"><RoleKpi icon={Target} label="Taux de résolution" value="92,4 %" detail="+4,8 % ce mois" tone="green" /><RoleKpi icon={AlertTriangle} label="Alertes actives" value="67" detail="3 critiques" tone="red" /><RoleKpi icon={UsersRound} label="Experts mobilisables" value="148" detail="42 en ligne" tone="blue" /><RoleKpi icon={MapPinned} label="Territoires couverts" value="86 %" detail="12 régions suivies" tone="gold" /></div><div className="agri-role-content-grid"><RolePanel kicker="Priorités du jour" title="Alertes à coordonner"><RoleQueueItem tone="red" title="Foyer phytosanitaire détecté" detail="Boucle du Mouhoun · 26 signalements" onClick={() => navigate('institutional')} /><RoleQueueItem tone="gold" title="Suspicion de maladie animale" detail="Centre-Nord · 18 signalements" onClick={() => navigate('institutional')} /><RoleQueueItem tone="blue" title="Mortalité piscicole signalée" detail="Hauts-Bassins · 11 signalements" onClick={() => navigate('institutional')} /></RolePanel><RolePanel kicker="Réseau territorial" title="Capacité d’intervention"><RoleAgenda time="148" title="Experts référencés" detail="42 disponibles en ligne" /><RoleAgenda time="18 min" title="Temps moyen de réponse" detail="−12,6 % sur la période" /><RoleAgenda time="4,9/5" title="Confiance du réseau" detail="Note moyenne des producteurs" /></RolePanel></div></div>;
+}
+
+function RoleKpi({ icon: Icon, label, value, detail, tone }: { icon: typeof Activity; label: string; value: string; detail: string; tone: string }) { return <motion.div className={`agri-role-kpi agri-role-kpi-${tone}`} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}><span><Icon className="h-5 w-5" /></span><div><small>{label}</small><strong>{value}</strong><em>{detail}</em></div></motion.div>; }
+function RolePanel({ kicker, title, children }: { kicker: string; title: string; children: React.ReactNode }) { return <section className="agri-role-panel"><div className="agri-role-panel-head"><div><span>{kicker}</span><h2>{title}</h2></div><ArrowUpRight className="h-4 w-4" /></div><div className="agri-role-panel-list">{children}</div></section>; }
+function RoleQueueItem({ tone, title, detail, onClick }: { tone: string; title: string; detail: string; onClick: () => void }) { return <button type="button" className="agri-role-queue-item" onClick={onClick}><i className={`agri-role-queue-${tone}`} /><span><strong>{title}</strong><small>{detail}</small></span><ArrowRight className="h-4 w-4" /></button>; }
+function RoleAgenda({ time, title, detail }: { time: string; title: string; detail: string }) { return <div className="agri-role-agenda"><time>{time}</time><span><strong>{title}</strong><small>{detail}</small></span><CheckCircle2 className="h-4 w-4" /></div>; }
+
 function CommandPalette({ onClose, navigate }: { onClose: () => void; navigate: (key: NavigationKey) => void }) {
   const commands: Array<{ key: NavigationKey; label: string; detail: string; icon: typeof MessageCircle }> = [
     { key: 'feed', label: 'Fil d’échanges', detail: 'Poser une question ou consulter les réponses', icon: MessageCircle },
@@ -204,9 +243,9 @@ function NotificationItem({ tone, title, detail, time }: { tone: 'green' | 'gold
   return <div className="agri-notification-item"><span className={`agri-notification-dot agri-notification-${tone}`} /><div><strong>{title}</strong><p>{detail}</p><small>{time}</small></div></div>;
 }
 
-function ProfilePanel({ role, onClose, onLogout }: { role: UserRole; onClose: () => void; onLogout: () => void }) {
+function ProfilePanel({ role, name, onClose, onLogout }: { role: UserRole; name: string; onClose: () => void; onLogout: () => void }) {
   const roleLabel = role === 'producer' ? 'Producteur' : role === 'expert' ? 'Expert' : 'Institution';
-  return <div className="agri-floating-panel agri-profile-panel"><div className="agri-floating-head"><div className="agri-profile-heading"><span>SD</span><div><strong>Steve D.</strong><small>{roleLabel} · Compte actif</small></div></div><button type="button" onClick={onClose} aria-label="Fermer"><X className="h-4 w-4" /></button></div><div className="agri-profile-menu"><button type="button"><ShieldCheck className="h-4 w-4" /> Mon espace sécurisé <ArrowRight className="ml-auto h-3.5 w-3.5" /></button><button type="button"><Settings2 className="h-4 w-4" /> Préférences <ArrowRight className="ml-auto h-3.5 w-3.5" /></button><button type="button" className="agri-profile-logout" onClick={onLogout}><span>↗</span> Se déconnecter</button></div></div>;
+  return <div className="agri-floating-panel agri-profile-panel"><div className="agri-floating-head"><div className="agri-profile-heading"><span>SD</span><div><strong>{name}</strong><small>{roleLabel} · Compte actif</small></div></div><button type="button" onClick={onClose} aria-label="Fermer"><X className="h-4 w-4" /></button></div><div className="agri-profile-menu"><button type="button"><ShieldCheck className="h-4 w-4" /> Mon espace sécurisé <ArrowRight className="ml-auto h-3.5 w-3.5" /></button><button type="button"><Settings2 className="h-4 w-4" /> Préférences <ArrowRight className="ml-auto h-3.5 w-3.5" /></button><button type="button" className="agri-profile-logout" onClick={onLogout}><span>↗</span> Se déconnecter</button></div></div>;
 }
 
 function LazyPage({ label, children }: { label: string; children: React.ReactNode }) {
