@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { ArrowLeft, ArrowRight, Bug, CheckCircle2, HeartPulse, Leaf, LoaderCircle, MapPinned, Send, ShieldCheck, Siren, Sparkles, Waves } from 'lucide-react';
+import { ArrowLeft, ArrowRight, ArrowUpRight, Bug, CheckCircle2, HeartPulse, Leaf, LoaderCircle, MapPinned, Radio, Send, ShieldCheck, Siren, Sparkles, Waves } from 'lucide-react';
 import { AudioRecorder } from '../../components/emergencies/AudioRecorder';
 import { EmergencyMap, type MapPoint } from '../../components/emergencies/EmergencyMap';
+import type { UserRole } from '../../types/shell';
 
 type EmergencyKind = 'veterinary' | 'phytosanitary' | 'livestock_epidemic' | 'pest_attack' | 'water_quality';
 type Priority = 'medium' | 'high' | 'critical';
@@ -15,7 +16,7 @@ const emergencyKinds: Array<{ key: EmergencyKind; label: string; description: st
   { key: 'water_quality', label: 'Qualité de l’eau', description: 'Pollution ou mortalité aquatique', icon: Waves, tone: 'blue' },
 ];
 
-export function EmergencyPage({ onBack }: { onBack: () => void }) {
+export function EmergencyPage({ role, onBack }: { role: UserRole; onBack: () => void }) {
   const [kind, setKind] = useState<EmergencyKind>('veterinary');
   const [priority, setPriority] = useState<Priority>('high');
   const [title, setTitle] = useState('');
@@ -51,6 +52,9 @@ export function EmergencyPage({ onBack }: { onBack: () => void }) {
     setSubmitted(true);
   }
 
+  if (role === 'expert') return <ExpertEmergencyWorkspace onBack={onBack} />;
+  if (role === 'institution') return <InstitutionEmergencyWorkspace onBack={onBack} />;
+
   if (submitted) return <EmergencySuccess onBack={onBack} location={userLocation} />;
 
   return (
@@ -77,6 +81,18 @@ export function EmergencyPage({ onBack }: { onBack: () => void }) {
     </motion.div>
   );
 }
+
+function ExpertEmergencyWorkspace({ onBack }: { onBack: () => void }) {
+  return <motion.div className="agri-role-page agri-sos-role-page" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: .38 }}><header className="agri-role-page-hero agri-role-page-hero-danger"><div><button type="button" className="agri-role-back" onClick={onBack}><ArrowLeft className="h-4 w-4" /> Retour à mon espace expert</button><div className="agri-role-eyebrow"><span /> Cellule d’intervention · Priorités terrain</div><h1>Chaque minute compte.<br /><em>Mobilisez le bon renfort.</em></h1><p>Retrouvez les signalements qui vous sont attribués, confirmez votre disponibilité et transmettez un premier retour au producteur.</p></div><div className="agri-role-hero-orb agri-role-hero-orb-danger"><Siren className="h-7 w-7" /><strong>4</strong><span>interventions urgentes</span></div></header><div className="agri-role-stat-grid"><RoleEmergencyStat label="À prendre en charge" value="4" detail="2 critiques" tone="red" /><RoleEmergencyStat label="Temps de prise en charge" value="7 min" detail="objectif · 10 min" tone="gold" /><RoleEmergencyStat label="Interventions ce mois" value="38" detail="+12% d’activité" tone="blue" /><RoleEmergencyStat label="Résolution sur site" value="86%" detail="sur 74 interventions" tone="green" /></div><div className="agri-role-work-grid"><section className="agri-role-work-card"><div className="agri-role-card-head"><div><span>File d’intervention</span><h2>Les urgences proches de vous</h2></div><span className="agri-role-live agri-role-live-danger"><i /> 4 actives</span></div><ExpertEmergencyItem title="Suspicion de maladie aviaire" detail="Kaya · 18 volailles touchées · il y a 24 min" tag="Critique" tone="red" /><ExpertEmergencyItem title="Fièvre sur un troupeau ovin" detail="Koubri · 2,4 km · il y a 41 min" tag="Prioritaire" tone="gold" /><ExpertEmergencyItem title="Mortalité piscicole" detail="Bobo-Dioulasso · 6,8 km · il y a 1 h" tag="À confirmer" tone="blue" /><button type="button" className="agri-role-card-link">Ouvrir la carte des interventions <ArrowRight className="h-4 w-4" /></button></section><aside className="agri-role-work-card agri-role-work-card-dark"><div className="agri-role-card-head"><div><span>Votre disponibilité</span><h2>Prêt à intervenir</h2></div><CheckCircle2 className="h-5 w-5" /></div><div className="agri-sos-availability"><div className="agri-sos-availability-orbit"><Siren className="h-6 w-6" /></div><strong>En ligne</strong><small>Votre zone : Ouagadougou · 50 km</small><button type="button">Modifier ma zone <ArrowUpRight className="h-4 w-4" /></button></div></aside></div></motion.div>;
+}
+
+function InstitutionEmergencyWorkspace({ onBack }: { onBack: () => void }) {
+  return <motion.div className="agri-role-page agri-sos-role-page" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: .38 }}><header className="agri-role-page-hero agri-role-page-hero-danger"><div><button type="button" className="agri-role-back" onClick={onBack}><ArrowLeft className="h-4 w-4" /> Retour à la supervision</button><div className="agri-role-eyebrow"><span /> Veille sanitaire · Commandement national</div><h1>Prévenir l’impact.<br /><em>Coordonner la réponse.</em></h1><p>Une lecture priorisée des foyers et signalements pour activer les équipes, suivre la propagation et documenter les décisions.</p></div><div className="agri-role-hero-orb agri-role-hero-orb-danger"><ShieldCheck className="h-7 w-7" /><strong>67</strong><span>alertes nationales</span></div></header><div className="agri-role-stat-grid"><RoleEmergencyStat label="Alertes critiques" value="3" detail="action immédiate" tone="red" /><RoleEmergencyStat label="Régions sous veille" value="7" detail="sur 12 régions" tone="gold" /><RoleEmergencyStat label="Équipes mobilisées" value="29" detail="vétérinaires et agronomes" tone="blue" /><RoleEmergencyStat label="Plans activés" value="12" detail="ce trimestre" tone="green" /></div><div className="agri-role-work-grid"><section className="agri-role-work-card"><div className="agri-role-card-head"><div><span>Centre de coordination</span><h2>Alertes nécessitant une décision</h2></div><span className="agri-role-live agri-role-live-danger"><i /> Actualisé maintenant</span></div><InstitutionEmergencyItem title="Foyer phytosanitaire détecté" detail="Boucle du Mouhoun · 26 signalements · il y a 28 min" tag="Activation requise" tone="red" /><InstitutionEmergencyItem title="Suspicion de maladie animale" detail="Centre-Nord · Kaya · 18 signalements · il y a 1 h" tag="En coordination" tone="gold" /><InstitutionEmergencyItem title="Qualité des eaux à surveiller" detail="Hauts-Bassins · 11 signalements · il y a 3 h" tag="Surveillance" tone="blue" /><button type="button" className="agri-role-card-link">Ouvrir le centre de situation <ArrowRight className="h-4 w-4" /></button></section><aside className="agri-role-work-card agri-role-work-card-dark"><div className="agri-role-card-head"><div><span>Capacité de réponse</span><h2>Réseau mobilisable</h2></div><Radio className="h-5 w-5" /></div><div className="agri-sos-capacity"><div><strong>42</strong><span>experts en ligne</span></div><div><strong>18 min</strong><span>délai moyen</span></div><div><strong>86%</strong><span>territoires couverts</span></div></div><button type="button" className="agri-role-card-link agri-role-card-link-light">Voir la répartition régionale <ArrowUpRight className="h-4 w-4" /></button></aside></div></motion.div>;
+}
+
+function RoleEmergencyStat({ label, value, detail, tone }: { label: string; value: string; detail: string; tone: string }) { return <div className={`agri-role-stat agri-role-stat-${tone}`}><small>{label}</small><strong>{value}</strong><span>{detail}</span></div>; }
+function ExpertEmergencyItem({ title, detail, tag, tone }: { title: string; detail: string; tag: string; tone: string }) { return <button type="button" className={`agri-role-queue agri-role-queue-${tone}`}><span><i />{tag}</span><div><strong>{title}</strong><small>{detail}</small></div><ArrowRight className="h-4 w-4" /></button>; }
+function InstitutionEmergencyItem({ title, detail, tag, tone }: { title: string; detail: string; tag: string; tone: string }) { return <div className={`agri-role-queue agri-role-queue-${tone}`}><span><i />{tag}</span><div><strong>{title}</strong><small>{detail}</small></div><ArrowUpRight className="h-4 w-4" /></div>; }
 
 function EmergencySuccess({ onBack, location }: { onBack: () => void; location: MapPoint | null }) {
   return <motion.div className="ag-sos-success" initial={{ opacity: 0, scale: .98 }} animate={{ opacity: 1, scale: 1 }}><div className="ag-sos-success-orbit" /><span className="ag-sos-success-icon"><CheckCircle2 className="h-9 w-9" /></span><span className="ag-sos-card-kicker">Signalement transmis</span><h1>Votre demande est prise en compte.</h1><p>La cellule SOS va mobiliser un professionnel certifié selon la priorité et la distance. Gardez votre téléphone disponible.</p><div className="ag-sos-reference"><span>Référence de suivi</span><strong>SOS-AGRI-092026</strong><small>{location ? 'Position GPS jointe au dossier' : 'Position approximative utilisée'}</small></div><button type="button" className="ag-sos-success-button" onClick={onBack}><ArrowLeft className="h-4 w-4" /> Retour au tableau de bord</button></motion.div>;

@@ -1,10 +1,11 @@
 import { useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
-import { ArrowLeft, ArrowRight, ArrowUpRight, Clock3, Filter, Flame, HelpCircle, MessageCircle, Mic, Plus, Search, ShieldCheck, Sparkles, TrendingUp, UsersRound } from 'lucide-react';
+import { ArrowLeft, ArrowRight, ArrowUpRight, BriefcaseBusiness, CheckCircle2, Clock3, Filter, Flame, HelpCircle, Landmark, MessageCircle, Mic, Plus, Radio, Search, ShieldCheck, Sparkles, TrendingUp, UsersRound } from 'lucide-react';
 import { initialQuestions, feedCategoryLabels } from '../../data/feed';
 import { QuestionCard } from '../../components/feed/QuestionCard';
 import { QuestionComposer } from '../../components/feed/QuestionComposer';
 import type { FeedCategory, FeedQuestion } from '../../types/feed';
+import type { UserRole } from '../../types/shell';
 
 type FeedFilter = 'all' | FeedCategory;
 
@@ -16,7 +17,7 @@ const categoryLabels: Record<FeedFilter, string> = {
   apiculture: 'Apiculture',
 };
 
-export function FeedPage({ onBack }: { onBack: () => void }) {
+export function FeedPage({ role, onBack }: { role: UserRole; onBack: () => void }) {
   const [filter, setFilter] = useState<FeedFilter>('all');
   const [search, setSearch] = useState('');
   const [questions, setQuestions] = useState(initialQuestions);
@@ -44,6 +45,9 @@ export function FeedPage({ onBack }: { onBack: () => void }) {
     setComposerOpen(true);
     window.setTimeout(() => document.getElementById('question-title')?.focus(), 80);
   }
+
+  if (role === 'expert') return <ExpertFeedWorkspace onBack={onBack} />;
+  if (role === 'institution') return <InstitutionFeedWorkspace onBack={onBack} />;
 
   return (
     <motion.div className="ag-feed-page" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: .38 }}>
@@ -91,6 +95,34 @@ export function FeedPage({ onBack }: { onBack: () => void }) {
       </div>
     </motion.div>
   );
+}
+
+function ExpertFeedWorkspace({ onBack }: { onBack: () => void }) {
+  return <motion.div className="agri-role-page agri-expert-feed-page" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: .38 }}>
+    <header className="agri-role-page-hero"><div><button type="button" className="agri-role-back" onClick={onBack}><ArrowLeft className="h-4 w-4" /> Retour à mon espace expert</button><div className="agri-role-eyebrow"><span /> File d’expertise · Réseau actif</div><h1>Les producteurs attendent.<br /><em>Votre expertise agit.</em></h1><p>Qualifier les demandes, prioriser les urgences et apporter une réponse certifiée depuis un seul espace de travail.</p></div><div className="agri-role-hero-orb agri-role-hero-orb-expert"><BriefcaseBusiness className="h-7 w-7" /><strong>12</strong><span>demandes à traiter</span></div></header>
+    <div className="agri-role-stat-grid"><RoleFeedStat label="À qualifier" value="12" detail="4 prioritaires" tone="green" /><RoleFeedStat label="Réponses cette semaine" value="38" detail="+18% vs. semaine passée" tone="gold" /><RoleFeedStat label="Délai moyen" value="18 min" detail="objectif réseau · 30 min" tone="blue" /><RoleFeedStat label="Satisfaction" value="4,9/5" detail="74 avis producteurs" tone="violet" /></div>
+    <div className="agri-role-work-grid"><section className="agri-role-work-card"><div className="agri-role-card-head"><div><span>À traiter maintenant</span><h2>Votre file de qualification</h2></div><span className="agri-role-live"><i /> En direct</span></div><ExpertFeedQueue title="Feuilles de maïs jaunissantes" detail="Awa Traoré · Agriculture · il y a 9 min" tag="Prioritaire" tone="red" /><ExpertFeedQueue title="Suspicion de maladie aviaire" detail="Moussa K. · Élevage · il y a 24 min" tag="Nouveau" tone="gold" /><ExpertFeedQueue title="Qualité de l’eau du bassin" detail="Issa O. · Pisciculture · il y a 41 min" tag="À qualifier" tone="blue" /><button type="button" className="agri-role-card-link">Ouvrir toute la file <ArrowRight className="h-4 w-4" /></button></section><aside className="agri-role-work-card agri-role-work-card-dark"><div className="agri-role-card-head"><div><span>Votre permanence</span><h2>Les rendez-vous du jour</h2></div><Radio className="h-5 w-5" /></div><div className="agri-role-agenda-line"><strong>09:30</strong><div><b>Appel avec Karim Sawadogo</b><small>Suivi parcelle · Ouagadougou</small></div><CheckCircle2 className="h-4 w-4" /></div><div className="agri-role-agenda-line"><strong>11:00</strong><div><b>Visite d’exploitation</b><small>Élevage · Koubri</small></div><Clock3 className="h-4 w-4" /></div><div className="agri-role-agenda-line"><strong>15:30</strong><div><b>Permanence réseau</b><small>Questions ouvertes · En ligne</small></div><Radio className="h-4 w-4" /></div></aside></div>
+  </motion.div>;
+}
+
+function InstitutionFeedWorkspace({ onBack }: { onBack: () => void }) {
+  return <motion.div className="agri-role-page agri-institution-feed-page" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: .38 }}>
+    <header className="agri-role-page-hero"><div><button type="button" className="agri-role-back" onClick={onBack}><ArrowLeft className="h-4 w-4" /> Retour à la supervision</button><div className="agri-role-eyebrow"><span /> Observatoire national · Données en direct</div><h1>Lire les signaux.<br /><em>Coordonner l’action.</em></h1><p>Un observatoire consolidé des demandes terrain pour repérer les tendances, suivre les territoires sensibles et orienter les moyens.</p></div><div className="agri-role-hero-orb agri-role-hero-orb-institution"><Landmark className="h-7 w-7" /><strong>67</strong><span>alertes à surveiller</span></div></header>
+    <div className="agri-role-stat-grid"><RoleFeedStat label="Demandes nationales" value="1 284" detail="sur les 30 derniers jours" tone="green" /><RoleFeedStat label="Territoires actifs" value="12" detail="régions couvertes" tone="gold" /><RoleFeedStat label="Sujets émergents" value="8" detail="à analyser cette semaine" tone="blue" /><RoleFeedStat label="Réponses certifiées" value="92%" detail="qualité du réseau" tone="violet" /></div>
+    <div className="agri-role-work-grid"><section className="agri-role-work-card"><div className="agri-role-card-head"><div><span>Veille des conversations</span><h2>Tendances à examiner</h2></div><span className="agri-role-live"><i /> Actualisé il y a 2 min</span></div><InstitutionFeedSignal title="Maladies aviaires" detail="Centre-Nord · 18 signalements cette semaine" trend="+32%" tone="red" /><InstitutionFeedSignal title="Fertilisation du maïs" detail="Boucle du Mouhoun · 146 demandes" trend="+18%" tone="gold" /><InstitutionFeedSignal title="Qualité de l’eau" detail="Hauts-Bassins · 11 signalements" trend="+9%" tone="blue" /><button type="button" className="agri-role-card-link">Voir l’analyse territoriale <ArrowRight className="h-4 w-4" /></button></section><aside className="agri-role-work-card agri-role-work-card-dark"><div className="agri-role-card-head"><div><span>Décision recommandée</span><h2>À mettre à l’agenda</h2></div><ShieldCheck className="h-5 w-5" /></div><div className="agri-role-decision"><strong>Renforcer la veille aviaire</strong><p>3 départements présentent une hausse simultanée des demandes vétérinaires.</p><button type="button">Ouvrir le brief <ArrowUpRight className="h-4 w-4" /></button></div></aside></div>
+  </motion.div>;
+}
+
+function RoleFeedStat({ label, value, detail, tone }: { label: string; value: string; detail: string; tone: string }) {
+  return <div className={`agri-role-stat agri-role-stat-${tone}`}><small>{label}</small><strong>{value}</strong><span>{detail}</span></div>;
+}
+
+function ExpertFeedQueue({ title, detail, tag, tone }: { title: string; detail: string; tag: string; tone: string }) {
+  return <button type="button" className={`agri-role-queue agri-role-queue-${tone}`}><span><i />{tag}</span><div><strong>{title}</strong><small>{detail}</small></div><ArrowUpRight className="h-4 w-4" /></button>;
+}
+
+function InstitutionFeedSignal({ title, detail, trend, tone }: { title: string; detail: string; trend: string; tone: string }) {
+  return <div className={`agri-role-signal agri-role-signal-${tone}`}><span className="agri-role-signal-icon"><TrendingUp className="h-4 w-4" /></span><div><strong>{title}</strong><small>{detail}</small></div><b>{trend}</b></div>;
 }
 
 function Signal({ icon, label, value, note, tone }: { icon: React.ReactNode; label: string; value: string; note: string; tone: 'green' | 'gold' | 'blue' }) {

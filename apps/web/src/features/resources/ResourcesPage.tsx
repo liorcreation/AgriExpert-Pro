@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Activity, ArrowLeft, ArrowRight, ArrowUpRight, BadgeCheck, BookOpen, CalendarClock, CalendarDays, ChevronRight, Clock3, Heart, LocateFixed, MapPin, MessageCircle, Search, ShieldCheck, SlidersHorizontal, Sparkles, Star, TrendingUp, UsersRound } from 'lucide-react';
-import type { NavigationKey } from '../../types/shell';
+import type { NavigationKey, UserRole } from '../../types/shell';
 
 type ResourceKind = 'guides' | 'directory';
 
@@ -21,7 +21,7 @@ const experts = [
   { id: 'expert-fatou', name: 'Mme Fatou Zongo', role: 'Apicultrice référente', sector: 'Apiculture', location: 'Koudougou · 18 km', rating: '4,9', cases: '51 conseils', initials: 'FZ', color: 'orange', available: true, specialties: ['Ruches', 'Miel', 'Pollinisation'] },
 ];
 
-export function ResourcesPage({ kind, onBack, onNavigate }: { kind: ResourceKind; onBack: () => void; onNavigate: (key: NavigationKey) => void }) {
+export function ResourcesPage({ role, kind, onBack, onNavigate }: { role: UserRole; kind: ResourceKind; onBack: () => void; onNavigate: (key: NavigationKey) => void }) {
   const [query, setQuery] = useState('');
   const [category, setCategory] = useState('Tout');
   const [favorites, setFavorites] = useState<string[]>([]);
@@ -43,9 +43,35 @@ export function ResourcesPage({ kind, onBack, onNavigate }: { kind: ResourceKind
 
   const toggleFavorite = (id: string) => setFavorites((current) => current.includes(id) ? current.filter((item) => item !== id) : [...current, id]);
 
+  if (role !== 'producer') return <RoleResourcesWorkspace role={role} kind={kind} query={query} setQuery={setQuery} onBack={onBack} onNavigate={onNavigate} />;
+
   if (isGuides) return <GuidesLayout query={query} setQuery={setQuery} category={category} setCategory={setCategory} categories={categories} visible={visible as typeof guides} favorites={favorites} selectedId={selectedId} startedIds={startedIds} onBack={onBack} onFavorite={toggleFavorite} onSelect={(id) => setSelectedId(selectedId === id ? null : id)} onStart={(id) => setStartedIds((current) => current.includes(id) ? current : [...current, id])} />;
 
   return <DirectoryLayout query={query} setQuery={setQuery} category={category} setCategory={setCategory} categories={categories} visible={visible as typeof experts} favorites={favorites} selectedId={selectedId} onlyAvailable={onlyAvailable} setOnlyAvailable={setOnlyAvailable} onBack={onBack} onFavorite={toggleFavorite} onSelect={(id) => setSelectedId(selectedId === id ? null : id)} onContact={() => onNavigate('feed')} onReset={() => { setQuery(''); setCategory('Tout'); setOnlyAvailable(false); }} />;
+}
+
+const expertResourceItems = {
+  guides: [{ title: 'Protocoles à valider', detail: '6 fiches attendent votre regard métier', value: '06', tone: 'green' }, { title: 'Réponses de référence', detail: '18 modèles prêts à partager au réseau', value: '18', tone: 'gold' }, { title: 'Veille technique', detail: '4 mises à jour depuis votre dernière visite', value: '04', tone: 'blue' }],
+  directory: [{ title: 'Mes relais territoriaux', detail: '12 collègues disponibles cette semaine', value: '12', tone: 'green' }, { title: 'Laboratoires partenaires', detail: '8 structures vérifiées à mobiliser', value: '08', tone: 'gold' }, { title: 'Demandes de collaboration', detail: '3 invitations à examiner', value: '03', tone: 'blue' }],
+};
+const institutionResourceItems = {
+  guides: [{ title: 'Référentiels nationaux', detail: '42 protocoles de campagne validés', value: '42', tone: 'green' }, { title: 'Notes de doctrine', detail: '8 documents mis à jour ce mois-ci', value: '08', tone: 'gold' }, { title: 'Plans de prévention', detail: '12 plans territoriaux actifs', value: '12', tone: 'blue' }],
+  directory: [{ title: 'Réseau mobilisable', detail: '148 experts et 23 laboratoires référencés', value: '171', tone: 'green' }, { title: 'Couverture territoriale', detail: '86% des zones suivies en direct', value: '86%', tone: 'gold' }, { title: 'Coordinations en cours', detail: '9 équipes interrégionales actives', value: '09', tone: 'blue' }],
+};
+
+function RoleResourcesWorkspace({ role, kind, query, setQuery, onBack, onNavigate }: { role: Exclude<UserRole, 'producer'>; kind: ResourceKind; query: string; setQuery: (value: string) => void; onBack: () => void; onNavigate: (key: NavigationKey) => void }) {
+  const institution = role === 'institution';
+  const items = institution ? institutionResourceItems[kind] : expertResourceItems[kind];
+  const title = kind === 'guides' ? (institution ? 'Les référentiels qui cadrent l’action.' : 'Les protocoles qui sécurisent vos réponses.') : (institution ? 'Le réseau mobilisable, en un regard.' : 'Les relais qui renforcent votre expertise.');
+  const eyebrow = kind === 'guides' ? (institution ? 'Référentiels nationaux · Gouvernance' : 'Base technique · Validation experte') : (institution ? 'Réseau territorial · Capacité opérationnelle' : 'Réseau professionnel · Coordination');
+  const description = kind === 'guides' ? (institution ? 'Centralisez les campagnes, doctrines et plans de prévention utilisés par les équipes territoriales.' : 'Retrouvez les ressources à valider, les réponses modèles et les mises à jour qui nourrissent vos interventions.') : (institution ? 'Suivez la capacité de mobilisation des experts, laboratoires et relais répartis sur le territoire.' : 'Organisez vos collaborations, identifiez les relais disponibles et développez une réponse coordonnée.');
+  const filtered = items.filter((item) => `${item.title} ${item.detail}`.toLowerCase().includes(query.trim().toLowerCase()));
+  return <motion.div className={`agri-role-page agri-role-resources-page agri-role-resources-${role}`} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: .38 }}>
+    <header className="agri-role-page-hero"><div><button type="button" className="agri-role-back" onClick={onBack}><ArrowLeft className="h-4 w-4" /> Retour à {institution ? 'la supervision' : 'mon espace expert'}</button><div className="agri-role-eyebrow"><span /> {eyebrow}</div><h1>{title}</h1><p>{description}</p><div className="agri-role-resource-actions"><button type="button" onClick={() => onNavigate(kind === 'guides' ? 'feed' : 'emergency')}><ArrowUpRight className="h-4 w-4" /> {kind === 'guides' ? 'Partager une expertise' : 'Ouvrir le centre d’action'}</button><span><ShieldCheck className="h-3.5 w-3.5" /> Accès certifié · données synchronisées</span></div></div><div className="agri-role-hero-orb agri-role-hero-orb-resource"><BookOpen className="h-7 w-7" /><strong>{kind === 'guides' ? (institution ? '42' : '18') : (institution ? '171' : '12')}</strong><span>{kind === 'guides' ? 'références actives' : 'ressources réseau'}</span></div></header>
+    <section className="agri-role-resource-toolbar"><div><span>Votre espace de travail</span><h2>{kind === 'guides' ? (institution ? 'Pilotage des référentiels' : 'Ma base de réponse') : (institution ? 'Carte de capacité du réseau' : 'Mes collaborations')}</h2></div><label><Search className="h-4 w-4" /><span className="sr-only">Rechercher</span><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Rechercher dans cet espace…" /></label></section>
+    <section className="agri-role-resource-grid">{filtered.map((item, index) => <motion.article key={item.title} className={`agri-role-resource-card agri-role-resource-card-${item.tone}`} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * .07 }}><div className="agri-role-resource-card-top"><span className="agri-role-resource-icon">{kind === 'guides' ? <BookOpen className="h-5 w-5" /> : <UsersRound className="h-5 w-5" />}</span><strong>{item.value}</strong></div><h3>{item.title}</h3><p>{item.detail}</p><button type="button">Ouvrir l’espace <ArrowRight className="h-4 w-4" /></button></motion.article>)}</section>
+    <section className="agri-role-resource-footer"><div><span className="agri-role-eyebrow"><span /> Prochaine action</span><h2>{institution ? 'Préparer le point de coordination national' : 'Transformer une ressource en décision terrain'}</h2><p>{institution ? 'Rassemblez les alertes, les référentiels et la capacité régionale avant la prochaine réunion.' : 'Une ressource bien qualifiée devient une réponse plus rapide et plus utile pour les producteurs.'}</p></div><button type="button" onClick={() => onNavigate(institution ? 'institutional' : 'feed')}>Continuer <ArrowRight className="h-4 w-4" /></button></section>
+  </motion.div>;
 }
 
 function DirectoryLayout({ query, setQuery, category, setCategory, categories, visible, favorites, selectedId, onlyAvailable, setOnlyAvailable, onBack, onFavorite, onSelect, onContact, onReset }: { query: string; setQuery: (value: string) => void; category: string; setCategory: (value: string) => void; categories: string[]; visible: typeof experts; favorites: string[]; selectedId: string | null; onlyAvailable: boolean; setOnlyAvailable: (value: boolean) => void; onBack: () => void; onFavorite: (id: string) => void; onSelect: (id: string) => void; onContact: () => void; onReset: () => void }) {
