@@ -1,16 +1,25 @@
-import { BadgeCheck, Clock3, MapPin, MessageCircle, MoreHorizontal, PlayCircle, ThumbsUp } from 'lucide-react';
-import { categoryAccent, feedCategoryLabels } from '../../data/feed';
+import { useState } from 'react';
+import { motion } from 'framer-motion';
+import { BadgeCheck, CheckCircle2, Clock3, MapPin, MessageCircle, PlayCircle, ThumbsUp } from 'lucide-react';
+import { feedCategoryLabels } from '../../data/feed';
 import type { FeedQuestion } from '../../types/feed';
 import { AudioResponsePlayer } from './AudioResponsePlayer';
 
-export function QuestionCard({ question }: { question: FeedQuestion }) {
+export function QuestionCard({ question, index, onReply }: { question: FeedQuestion; index: number; onReply: () => void }) {
+  const [liked, setLiked] = useState(false);
+  const initials = question.authorName.split(' ').map((item) => item[0]).join('').slice(0, 2);
+
   return (
-    <article className="ag-card overflow-hidden p-5 sm:p-6">
-      <div className="flex items-start justify-between gap-3"><div className="flex min-w-0 items-center gap-3"><span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-territory-900 text-sm font-bold text-white dark:bg-territory-500 dark:text-obsidian-950">{question.authorName.split(' ').map((item) => item[0]).join('').slice(0, 2)}</span><div className="min-w-0"><p className="truncate text-sm font-bold text-obsidian-900 dark:text-cream-50">{question.authorName}</p><p className="mt-0.5 flex items-center gap-1 text-[11px] text-obsidian-600 dark:text-cream-300"><MapPin className="h-3 w-3" />{question.authorLocation}<span className="mx-0.5">·</span><Clock3 className="h-3 w-3" />{question.createdAt}</p></div></div><button type="button" className="ag-button-ghost min-h-9 min-w-9 px-2" aria-label="Options de la question"><MoreHorizontal className="h-4 w-4" /></button></div>
-      <div className="mt-5 flex items-center gap-2"><span className={['rounded-full px-2.5 py-1 text-[10px] font-bold', categoryAccent[question.category]].join(' ')}>{feedCategoryLabels[question.category]}</span>{question.hasVoice && <span className="inline-flex items-center gap-1 rounded-full bg-medical-50 px-2.5 py-1 text-[10px] font-bold text-medical-600 dark:bg-medical-500/10 dark:text-medical-500"><PlayCircle className="h-3 w-3" /> Note vocale</span>}</div>
-      <h3 className="mt-3 text-heading-lg text-obsidian-950 dark:text-cream-50">{question.title}</h3><p className="mt-2 text-sm leading-6 text-obsidian-600 dark:text-cream-300">{question.body}</p>
-      <div className="mt-5 flex items-center gap-4 border-t border-cream-300/70 pt-4 text-xs font-semibold text-obsidian-600 dark:border-obsidian-700 dark:text-cream-300"><span className="flex items-center gap-1.5"><MessageCircle className="h-4 w-4" /> {question.answerCount} réponse{question.answerCount > 1 ? 's' : ''}</span><span className="flex items-center gap-1.5"><ThumbsUp className="h-4 w-4" /> Utile</span><button type="button" className="ml-auto text-territory-700 hover:underline dark:text-territory-300">Répondre</button></div>
-      {question.answer && <div className="mt-5 rounded-card border border-territory-500/15 bg-territory-50/70 p-4 dark:bg-territory-500/5"><div className="flex items-start gap-3"><span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gold-100 text-xs font-bold text-gold-700 dark:bg-gold-500/15 dark:text-gold-300">{question.answer.initials}</span><div className="min-w-0 flex-1"><div className="flex flex-wrap items-center gap-2"><p className="text-sm font-bold text-obsidian-900 dark:text-cream-50">{question.answer.expertName}</p>{question.answer.certified && <span className="inline-flex items-center gap-1 rounded-full bg-gold-100 px-2 py-0.5 text-[10px] font-bold text-gold-700 dark:bg-gold-500/15 dark:text-gold-300"><BadgeCheck className="h-3 w-3" /> Expert certifié</span>}</div><p className="mt-0.5 text-[11px] text-obsidian-600 dark:text-cream-300">{question.answer.expertRole} · {question.answer.createdAt}</p></div></div><p className="mt-3 text-sm leading-6 text-obsidian-800 dark:text-cream-100">{question.answer.body}</p><div className="mt-4"><AudioResponsePlayer text={question.answer.body} language={question.answer.language} /></div></div>}
-    </article>
+    <motion.article className="ag-feed-question" initial={{ opacity: 0, y: 12 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, amount: .15 }} transition={{ duration: .35, delay: Math.min(index * .05, .18) }}>
+      <div className="ag-feed-question-top"><div className="ag-feed-author"><span className="ag-feed-author-avatar">{initials}</span><div><strong>{question.authorName}</strong><span><MapPin className="h-3 w-3" />{question.authorLocation}<i /> <Clock3 className="h-3 w-3" />{question.createdAt}</span></div></div><span className="ag-feed-question-status">{question.answer ? <><CheckCircle2 className="h-3.5 w-3.5" /> Suivi par un expert</> : <><Clock3 className="h-3.5 w-3.5" /> En attente</>}</span></div>
+      <div className="ag-feed-question-tags"><span className={`ag-feed-category ag-feed-category-${question.category}`}>{feedCategoryLabels[question.category]}</span>{question.hasVoice && <span className="ag-feed-voice-tag"><PlayCircle className="h-3 w-3" /> Note vocale</span>}</div>
+      <h2>{question.title}</h2><p className="ag-feed-question-body">{question.body}</p>
+      <div className="ag-feed-question-footer"><span className="ag-feed-answer-count"><MessageCircle className="h-4 w-4" /> {question.answerCount} réponse{question.answerCount > 1 ? 's' : ''}</span><button type="button" className={liked ? 'ag-feed-question-action ag-feed-question-action-liked' : 'ag-feed-question-action'} onClick={() => setLiked((current) => !current)} aria-pressed={liked}><ThumbsUp className="h-3.5 w-3.5" /> {liked ? 'Utile' : 'Marquer utile'}</button><button type="button" className="ag-feed-reply" onClick={onReply}>Répondre <span>→</span></button></div>
+      {question.answer ? <div className="ag-feed-answer"><div className="ag-feed-answer-head"><span className="ag-feed-expert-avatar">{question.answer.initials}</span><div><div className="ag-feed-answer-name"><strong>{question.answer.expertName}</strong>{question.answer.certified && <span><BadgeCheck className="h-3 w-3" /> Expert certifié</span>}</div><small>{question.answer.expertRole} · {question.answer.createdAt}</small></div><ShieldMark /></div><p className="ag-feed-answer-body">{question.answer.body}</p><AudioResponsePlayer text={question.answer.body} language={question.answer.language} /></div> : <div className="ag-feed-pending"><span><Clock3 className="h-4 w-4" /></span><div><strong>Question ouverte à la communauté</strong><small>Un spécialiste disponible pourra vous répondre prochainement.</small></div><button type="button" onClick={onReply}>Proposer une réponse</button></div>}
+    </motion.article>
   );
+}
+
+function ShieldMark() {
+  return <span className="ag-feed-shield-mark"><BadgeCheck className="h-4 w-4" /></span>;
 }
