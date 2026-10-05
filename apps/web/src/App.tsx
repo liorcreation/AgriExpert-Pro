@@ -99,7 +99,7 @@ function App() {
     setOverlay(null);
   }, []);
 
-  if (!authSession) return <AuthPage onAuthenticated={completeAuth} />;
+  if (!authSession) return <><AuthPage onAuthenticated={completeAuth} /><AnimatePresence>{showBrandIntro && <BrandIntro onComplete={completeBrandIntro} />}</AnimatePresence></>;
 
   return (
     <div className="agri-app">
