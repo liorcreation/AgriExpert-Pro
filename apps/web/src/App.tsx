@@ -3,8 +3,10 @@ import { AnimatePresence, motion } from 'framer-motion';
 import {
   Activity,
   ArrowRight,
+  ArrowUpRight,
   Bell,
   BookOpen,
+  CalendarDays,
   Check,
   ChevronDown,
   CloudSun,
@@ -102,7 +104,19 @@ function CompactSelect({ value, onChange, options }: { value: string; onChange: 
 }
 
 function Overview({ navigate, voiceEnabled }: { navigate: (key: NavigationKey) => void; voiceEnabled: boolean }) {
-  return <div className="agri-overview"><div className="agri-welcome-row"><div><div className="agri-eyebrow"><span className="agri-eyebrow-dot" /> Mardi 03 octobre 2026 <span className="agri-eyebrow-separator">·</span> Burkina Faso</div><h1 className="agri-display-title">Bonjour Steve <span className="agri-wave">✦</span></h1><p className="agri-intro">Votre territoire agricole, vos experts et vos prochaines décisions — réunis au même endroit.</p></div><div className="agri-welcome-actions"><button type="button" className="agri-soft-action"><CloudSun className="h-4 w-4" /><span>28° · Ouaga</span></button><button type="button" className="agri-primary-button" onClick={() => navigate('feed')}><Plus className="h-4 w-4" /> Nouvelle demande</button></div></div><HeroAction navigate={navigate} voiceEnabled={voiceEnabled} /><MetricStrip /><div className="agri-section-heading"><div><span className="agri-section-kicker">Votre cockpit</span><h2>Ce qui mérite votre attention</h2></div><button type="button" className="agri-text-link" onClick={() => navigate('feed')}>Voir l’activité <ArrowRight className="h-4 w-4" /></button></div><div className="agri-content-grid"><PulseCard /><TodayCard navigate={navigate} /></div><div className="agri-section-heading agri-section-heading-lower"><div><span className="agri-section-kicker">Accès terrain</span><h2>Vos outils essentiels</h2></div><span className="agri-live-label"><span /> Tout est opérationnel</span></div><ToolGrid navigate={navigate} /></div>;
+  const today = new Intl.DateTimeFormat('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' }).format(new Date());
+  return <div className="agri-overview">
+    <motion.div className="agri-welcome-row" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: .35 }}>
+      <div><div className="agri-eyebrow"><span className="agri-eyebrow-dot" /> {today} <span className="agri-eyebrow-separator">·</span> Burkina Faso</div><h1 className="agri-display-title">Bonjour Steve <span className="agri-wave">✦</span></h1><p className="agri-intro">Votre activité agricole, vos experts et les prochaines actions utiles — au même endroit.</p></div>
+      <div className="agri-welcome-actions"><span className="agri-territory-pill"><MapPin className="h-3.5 w-3.5" /> Ouagadougou</span><button type="button" className="agri-primary-button" onClick={() => navigate('feed')}><Plus className="h-4 w-4" /> Nouvelle demande</button></div>
+    </motion.div>
+    <HeroAction navigate={navigate} voiceEnabled={voiceEnabled} />
+    <MetricStrip />
+    <div className="agri-section-heading"><div><span className="agri-section-kicker">Votre cockpit</span><h2>Les bons repères, au bon moment</h2></div><span className="agri-section-context"><CalendarDays className="h-3.5 w-3.5" /> Mis à jour aujourd’hui</span></div>
+    <div className="agri-content-grid"><PulseCard /><TodayCard navigate={navigate} /></div>
+    <div className="agri-section-heading agri-section-heading-lower"><div><span className="agri-section-kicker">Accès terrain</span><h2>Vos outils essentiels</h2></div><span className="agri-live-label"><span /> Réseau disponible</span></div>
+    <ToolGrid navigate={navigate} />
+  </div>;
 }
 
 function HeroAction({ navigate, voiceEnabled }: { navigate: (key: NavigationKey) => void; voiceEnabled: boolean }) {
@@ -115,16 +129,28 @@ function MetricStrip() {
 }
 
 function PulseCard() {
-  const bars = [38, 52, 44, 70, 58, 80, 67, 93, 74, 86, 63, 78, 88, 68, 91, 76, 95, 82, 98, 84];
-  return <section className="agri-panel agri-pulse-panel"><div className="agri-panel-head"><div><span className="agri-panel-kicker"><Activity className="h-3.5 w-3.5" /> Pulse du réseau</span><h3>Votre activité cette semaine</h3></div><button type="button" className="agri-more-button" aria-label="Plus d’options"><MoreHorizontal className="h-4 w-4" /></button></div><div className="agri-pulse-stats"><div><strong>128</strong><span>interactions</span></div><div className="agri-pulse-change"><TrendingUp className="h-3.5 w-3.5" /> +16,4%</div><div className="agri-pulse-legend"><span className="agri-legend-dot" /> Demandes traitées</div></div><div className="agri-bars" aria-label="Graphique des interactions de la semaine">{bars.map((height, index) => <span key={`${height}-${index}`} style={{ height: `${height}%` }} className={index > 15 ? 'agri-bar-active' : ''} />)}</div><div className="agri-chart-labels"><span>Lun</span><span>Mar</span><span>Mer</span><span>Jeu</span><span>Ven</span><span>Sam</span><span>Dim</span></div></section>;
+  const [period, setPeriod] = useState<'7j' | '30j'>('7j');
+  const series = period === '7j'
+    ? [38, 52, 44, 70, 58, 80, 67, 93, 74, 86, 63, 78, 88, 68, 91, 76, 95, 82, 98, 84]
+    : [44, 38, 61, 53, 71, 48, 66, 57, 79, 63, 72, 59, 86, 69, 81, 74, 93, 68, 88, 78];
+  const bars = period === '7j' ? series.slice(-7) : series;
+  const labels = period === '7j' ? ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'] : ['S−27', 'S−24', 'S−21', 'S−18', 'S−15', 'S−12', 'S−9', 'S−6', 'S−3', 'Auj.'];
+  const total = period === '7j' ? '128' : '486';
+  const change = period === '7j' ? '+16,4%' : '+12,8%';
+  return <motion.section className="agri-panel agri-pulse-panel" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: .4 }}>
+    <div className="agri-panel-head"><div><span className="agri-panel-kicker"><Activity className="h-3.5 w-3.5" /> Pulse du réseau</span><h3>Votre activité</h3></div><div className="agri-period-switch" role="group" aria-label="Période du graphique"><button type="button" aria-pressed={period === '7j'} className={period === '7j' ? 'agri-period-active' : ''} onClick={() => setPeriod('7j')}>7 jours</button><button type="button" aria-pressed={period === '30j'} className={period === '30j' ? 'agri-period-active' : ''} onClick={() => setPeriod('30j')}>30 jours</button></div></div>
+    <div className="agri-pulse-stats"><div><strong>{total}</strong><span>interactions</span></div><div className="agri-pulse-change"><TrendingUp className="h-3.5 w-3.5" /> {change}</div><div className="agri-pulse-legend"><span className="agri-legend-dot" /> Demandes traitées</div></div>
+    <div className={`agri-bars ${period === '30j' ? 'agri-bars-month' : ''}`} role="img" aria-label={`Interactions traitées sur ${period === '7j' ? 'les 7 derniers jours' : 'les 30 derniers jours'}`}>{bars.map((height, index) => <motion.span key={`${period}-${index}`} initial={{ height: 0 }} animate={{ height: `${height}%` }} transition={{ duration: .42, delay: index * .018 }} className={index >= bars.length - 3 ? 'agri-bar-active' : ''} />)}</div><div className="agri-chart-labels">{labels.map((label) => <span key={label}>{label}</span>)}</div>
+  </motion.section>;
 }
 
 function TodayCard({ navigate }: { navigate: (key: NavigationKey) => void }) {
-  return <section className="agri-panel agri-today-panel"><div className="agri-panel-head"><div><span className="agri-panel-kicker"><Sparkles className="h-3.5 w-3.5" /> À ne pas manquer</span><h3>Votre journée en un coup d’œil</h3></div><span className="agri-date-badge">03 OCT</span></div><div className="agri-agenda"><AgendaItem color="green" time="09:00" title="Réponse de l’ing. Awa Kaboré" detail="Feuilles de maïs jaunissantes" /><AgendaItem color="gold" time="11:30" title="Rappel d’itinéraire" detail="2e application · Parcelle Nord" /><AgendaItem color="blue" time="14:00" title="Disponibilité vétérinaire" detail="Dr. Adama Traoré · en ligne" /></div><button type="button" className="agri-outline-button" onClick={() => navigate('guides')}>Ouvrir mes itinéraires <ArrowRight className="h-3.5 w-3.5" /></button></section>;
+  const day = new Intl.DateTimeFormat('fr-FR', { day: '2-digit', month: 'short' }).format(new Date()).replace('.', '').toUpperCase();
+  return <motion.section className="agri-panel agri-today-panel" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: .4, delay: .08 }}><div className="agri-panel-head"><div><span className="agri-panel-kicker"><Sparkles className="h-3.5 w-3.5" /> À ne pas manquer</span><h3>Votre journée en un coup d’œil</h3></div><span className="agri-date-badge">{day}</span></div><div className="agri-agenda"><AgendaItem color="green" time="09:00" title="Réponse de l’ing. Awa Kaboré" detail="Feuilles de maïs jaunissantes" onClick={() => navigate('feed')} /><AgendaItem color="gold" time="11:30" title="Rappel d’itinéraire" detail="2e application · Parcelle Nord" onClick={() => navigate('guides')} /><AgendaItem color="blue" time="14:00" title="Disponibilité vétérinaire" detail="Dr. Adama Traoré · en ligne" onClick={() => navigate('directory')} /></div><button type="button" className="agri-outline-button" onClick={() => navigate('guides')}>Voir mes itinéraires <ArrowRight className="h-3.5 w-3.5" /></button></motion.section>;
 }
 
-function AgendaItem({ color, time, title, detail }: { color: 'green' | 'gold' | 'blue'; time: string; title: string; detail: string }) {
-  return <div className="agri-agenda-item"><span className={`agri-agenda-line agri-line-${color}`} /><time>{time}</time><div><strong>{title}</strong><span>{detail}</span></div><Check className="agri-agenda-check h-4 w-4" /></div>;
+function AgendaItem({ color, time, title, detail, onClick }: { color: 'green' | 'gold' | 'blue'; time: string; title: string; detail: string; onClick: () => void }) {
+  return <button type="button" className="agri-agenda-item" onClick={onClick}><span className={`agri-agenda-line agri-line-${color}`} /><time>{time}</time><span className="agri-agenda-copy"><strong>{title}</strong><span>{detail}</span></span><ArrowUpRight className="agri-agenda-check h-4 w-4" /></button>;
 }
 
 function ToolGrid({ navigate }: { navigate: (key: NavigationKey) => void }) {
