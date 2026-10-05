@@ -20,6 +20,9 @@ export type FeedQuestion = {
   authorLocation: string;
   createdAt: string;
   hasVoice: boolean;
+  hasPhoto?: boolean;
+  photoName?: string;
+  photoPreview?: string;
   answerCount: number;
   answer?: FeedAnswer;
 };

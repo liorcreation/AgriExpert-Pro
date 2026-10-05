@@ -47,7 +47,7 @@ import { AppSidebar } from './components/shell/AppSidebar';
 import { BrandIntro } from './components/brand/BrandIntro';
 import { InstallAppButton } from './components/shell/InstallAppButton';
 import { AuthPage, type AuthSession } from './features/auth/AuthPage';
-import type { LanguageCode, NavigationKey, UserRole } from './types/shell';
+import type { LanguageCode, NavigationKey, ProfileSpecialty, SubscriptionPlan, UserRole } from './types/shell';
 
 const EmergencyPage = lazy(async () => ({ default: (await import('./features/emergencies/EmergencyPage')).EmergencyPage }));
 const FeedPage = lazy(async () => ({ default: (await import('./features/feed/FeedPage')).FeedPage }));
@@ -132,9 +132,9 @@ function App() {
         <TopBar role={role} language={language} voiceEnabled={voiceEnabled} darkMode={darkMode} onMenuOpen={() => setMobileSidebarOpen(true)} onRoleChange={updateRole} onLanguageChange={setLanguage} onVoiceToggle={() => setVoiceEnabled((current) => !current)} onThemeToggle={() => setDarkMode((current) => !current)} onSearch={() => setOverlay('search')} onNotifications={() => setOverlay(overlay === 'notifications' ? null : 'notifications')} onProfile={() => setOverlay(overlay === 'profile' ? null : 'profile')} />
         {overlay === 'search' && <CommandPalette onClose={() => setOverlay(null)} navigate={(key) => { navigate(key); setOverlay(null); }} />}
         {overlay === 'notifications' && <NotificationPanel onClose={() => setOverlay(null)} />}
-        {overlay === 'profile' && <ProfilePanel role={role} name={authSession.name} onClose={() => setOverlay(null)} onLogout={logout} />}
+        {overlay === 'profile' && <ProfilePanel role={role} profile={authSession.profile} plan={authSession.plan} name={authSession.name} onClose={() => setOverlay(null)} onLogout={logout} />}
         <main className="agri-main"><div className="agri-main-inner">
-          {activeKey === 'overview' ? <Overview navigate={navigate} voiceEnabled={voiceEnabled} role={role} name={authSession.name} /> : activeKey === 'emergency' ? <LazyPage label="Ouverture du centre SOS…"><EmergencyPage role={role} onBack={() => navigate('overview')} /></LazyPage> : activeKey === 'feed' ? <LazyPage label="Chargement du fil d’échanges…"><FeedPage role={role} onBack={() => navigate('overview')} /></LazyPage> : activeKey === 'institutional' ? <LazyPage label="Chargement du cockpit institutionnel…"><InstitutionalDashboard onBack={() => navigate('overview')} /></LazyPage> : activeKey === 'guides' ? <LazyPage label="Chargement des fiches techniques…"><ResourcesPage role={role} kind="guides" onBack={() => navigate('overview')} onNavigate={navigate} /></LazyPage> : activeKey === 'directory' ? <LazyPage label="Ouverture de l’annuaire…"><ResourcesPage role={role} kind="directory" onBack={() => navigate('overview')} onNavigate={navigate} /></LazyPage> : <Overview navigate={navigate} voiceEnabled={voiceEnabled} role={role} name={authSession.name} />}
+          {activeKey === 'overview' ? <Overview navigate={navigate} voiceEnabled={voiceEnabled} role={role} name={authSession.name} plan={authSession.plan} /> : activeKey === 'emergency' ? <LazyPage label="Ouverture du centre SOS…"><EmergencyPage role={role} onBack={() => navigate('overview')} /></LazyPage> : activeKey === 'feed' ? <LazyPage label="Chargement du fil d’échanges…"><FeedPage role={role} onBack={() => navigate('overview')} /></LazyPage> : activeKey === 'institutional' ? <LazyPage label="Chargement du cockpit institutionnel…"><InstitutionalDashboard onBack={() => navigate('overview')} /></LazyPage> : activeKey === 'guides' ? <LazyPage label="Chargement des fiches techniques…"><ResourcesPage role={role} kind="guides" onBack={() => navigate('overview')} onNavigate={navigate} /></LazyPage> : activeKey === 'directory' ? <LazyPage label="Ouverture de l’annuaire…"><ResourcesPage role={role} kind="directory" onBack={() => navigate('overview')} onNavigate={navigate} /></LazyPage> : <Overview navigate={navigate} voiceEnabled={voiceEnabled} role={role} name={authSession.name} plan={authSession.plan} />}
         </div></main>
       </div>
     </div>
@@ -149,7 +149,7 @@ function CompactSelect({ value, onChange, options }: { value: string; onChange: 
   return <div className="agri-compact-select"><select value={value} onChange={(event) => onChange(event.target.value)} aria-label="Préférence">{options.map(([option, label]) => <option key={option} value={option}>{label}</option>)}</select><ChevronDown className="h-3 w-3" /></div>;
 }
 
-function Overview({ navigate, voiceEnabled, role, name }: { navigate: (key: NavigationKey) => void; voiceEnabled: boolean; role: UserRole; name: string }) {
+function Overview({ navigate, voiceEnabled, role, name, plan }: { navigate: (key: NavigationKey) => void; voiceEnabled: boolean; role: UserRole; name: string; plan?: SubscriptionPlan }) {
   if (role === 'expert') return <ExpertOverview navigate={navigate} name={name} />;
   if (role === 'institution') return <InstitutionOverview navigate={navigate} name={name} />;
   const today = new Intl.DateTimeFormat('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' }).format(new Date());
@@ -158,6 +158,7 @@ function Overview({ navigate, voiceEnabled, role, name }: { navigate: (key: Navi
       <div><div className="agri-eyebrow"><span className="agri-eyebrow-dot" /> {today} <span className="agri-eyebrow-separator">·</span> Burkina Faso</div><h1 className="agri-display-title">Bonjour {name.split(' ')[0]} <span className="agri-wave">✦</span></h1><p className="agri-intro">Votre activité agricole, vos experts et les prochaines actions utiles — au même endroit.</p></div>
       <div className="agri-welcome-actions"><span className="agri-territory-pill"><MapPin className="h-3.5 w-3.5" /> Ouagadougou</span><button type="button" className="agri-primary-button" onClick={() => navigate('feed')}><Plus className="h-4 w-4" /> Nouvelle demande</button></div>
     </motion.div>
+    <PlanBanner plan={plan} navigate={navigate} />
     <HeroAction navigate={navigate} voiceEnabled={voiceEnabled} />
     <MetricStrip />
     <div className="agri-section-heading"><div><span className="agri-section-kicker">Votre cockpit</span><h2>Les bons repères, au bon moment</h2></div><span className="agri-section-context"><CalendarDays className="h-3.5 w-3.5" /> Mis à jour aujourd’hui</span></div>
@@ -165,6 +166,11 @@ function Overview({ navigate, voiceEnabled, role, name }: { navigate: (key: Navi
     <div className="agri-section-heading agri-section-heading-lower"><div><span className="agri-section-kicker">Accès terrain</span><h2>Vos outils essentiels</h2></div><span className="agri-live-label"><span /> Réseau disponible</span></div>
     <ToolGrid navigate={navigate} />
   </div>;
+}
+
+function PlanBanner({ plan, navigate }: { plan?: SubscriptionPlan; navigate: (key: NavigationKey) => void }) {
+  const pro = plan === 'pro';
+  return <section className={pro ? 'agri-plan-banner agri-plan-banner-pro' : 'agri-plan-banner'}><span className="agri-plan-mark"><Sparkles className="h-4 w-4" /></span><div><strong>{pro ? 'AgriExpert PRO activé' : 'Passez à AgriExpert PRO'}</strong><small>{pro ? 'Diagnostics photo, mode hors-ligne et réponses avancées sont disponibles.' : 'Débloquez le diagnostic photo, la synchronisation hors-ligne et vos suivis avancés.'}</small></div>{!pro && <button type="button" onClick={() => navigate('feed')}>Découvrir PRO <ArrowRight className="h-3.5 w-3.5" /></button>}<span className="agri-plan-chip">{pro ? 'PRO' : 'FREE'}</span></section>;
 }
 
 function HeroAction({ navigate, voiceEnabled }: { navigate: (key: NavigationKey) => void; voiceEnabled: boolean }) {
@@ -243,9 +249,11 @@ function NotificationItem({ tone, title, detail, time }: { tone: 'green' | 'gold
   return <div className="agri-notification-item"><span className={`agri-notification-dot agri-notification-${tone}`} /><div><strong>{title}</strong><p>{detail}</p><small>{time}</small></div></div>;
 }
 
-function ProfilePanel({ role, name, onClose, onLogout }: { role: UserRole; name: string; onClose: () => void; onLogout: () => void }) {
+function ProfilePanel({ role, profile, plan, name, onClose, onLogout }: { role: UserRole; profile?: ProfileSpecialty; plan?: SubscriptionPlan; name: string; onClose: () => void; onLogout: () => void }) {
   const roleLabel = role === 'producer' ? 'Producteur' : role === 'expert' ? 'Expert' : 'Institution';
-  return <div className="agri-floating-panel agri-profile-panel"><div className="agri-floating-head"><div className="agri-profile-heading"><span>SD</span><div><strong>{name}</strong><small>{roleLabel} · Compte actif</small></div></div><button type="button" onClick={onClose} aria-label="Fermer"><X className="h-4 w-4" /></button></div><div className="agri-profile-menu"><button type="button"><ShieldCheck className="h-4 w-4" /> Mon espace sécurisé <ArrowRight className="ml-auto h-3.5 w-3.5" /></button><button type="button"><Settings2 className="h-4 w-4" /> Préférences <ArrowRight className="ml-auto h-3.5 w-3.5" /></button><button type="button" className="agri-profile-logout" onClick={onLogout}><span>↗</span> Se déconnecter</button></div></div>;
+  const profileLabel = profile?.replace('fish-farmer', 'Pisciculteur').replace('livestock', 'Éleveur').replace('beekeeper', 'Apiculteur').replace('farmer', 'Agriculteur').replace('agronomist', 'Agronome').replace('veterinarian', 'Vétérinaire').replace('aquaculture-specialist', 'Spécialiste pisciculture').replace('beekeeping-advisor', 'Apiculteur conseil');
+  const planLabel = plan === 'pro' ? 'PRO' : plan === 'institution' ? 'Institution' : 'Free';
+  return <div className="agri-floating-panel agri-profile-panel"><div className="agri-floating-head"><div className="agri-profile-heading"><span>SD</span><div><strong>{name}</strong><small>{roleLabel} · {profileLabel || 'Compte actif'}</small></div></div><button type="button" onClick={onClose} aria-label="Fermer"><X className="h-4 w-4" /></button></div><div className="agri-profile-plan"><span>Formule active</span><strong>{planLabel}</strong><small>{plan === 'pro' ? 'Diagnostics photo · hors-ligne · outils avancés' : plan === 'institution' ? 'Pilotage agrégé et suivi territorial' : 'Accès essentiel au réseau'}</small></div><div className="agri-profile-menu"><button type="button"><ShieldCheck className="h-4 w-4" /> Mon espace sécurisé <ArrowRight className="ml-auto h-3.5 w-3.5" /></button><button type="button"><Settings2 className="h-4 w-4" /> Préférences <ArrowRight className="ml-auto h-3.5 w-3.5" /></button><button type="button" className="agri-profile-logout" onClick={onLogout}><span>↗</span> Se déconnecter</button></div></div>;
 }
 
 function LazyPage({ label, children }: { label: string; children: React.ReactNode }) {

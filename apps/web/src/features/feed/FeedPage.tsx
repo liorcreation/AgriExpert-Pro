@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import { ArrowLeft, ArrowRight, ArrowUpRight, BriefcaseBusiness, CheckCircle2, Clock3, Filter, Flame, HelpCircle, Landmark, MessageCircle, Mic, Plus, Radio, Search, ShieldCheck, Sparkles, TrendingUp, UsersRound } from 'lucide-react';
 import { initialQuestions, feedCategoryLabels } from '../../data/feed';
@@ -6,6 +6,7 @@ import { QuestionCard } from '../../components/feed/QuestionCard';
 import { QuestionComposer } from '../../components/feed/QuestionComposer';
 import type { FeedCategory, FeedQuestion } from '../../types/feed';
 import type { UserRole } from '../../types/shell';
+import { getOfflineDrafts, queueOfflineDraft, syncOfflineDrafts } from '../../lib/offlineQueue';
 
 type FeedFilter = 'all' | FeedCategory;
 
@@ -23,6 +24,15 @@ export function FeedPage({ role, onBack }: { role: UserRole; onBack: () => void 
   const [questions, setQuestions] = useState(initialQuestions);
   const [composerOpen, setComposerOpen] = useState(false);
   const [sortByAnswers, setSortByAnswers] = useState(false);
+  const [isOnline, setIsOnline] = useState(() => typeof navigator === 'undefined' ? true : navigator.onLine);
+  const [offlineCount, setOfflineCount] = useState(() => getOfflineDrafts().filter((draft) => draft.status === 'queued').length);
+
+  useEffect(() => {
+    const handleOnline = () => { setIsOnline(true); const synced = syncOfflineDrafts(); setOfflineCount(synced.length ? 0 : getOfflineDrafts().filter((draft) => draft.status === 'queued').length); };
+    const handleOffline = () => setIsOnline(false);
+    window.addEventListener('online', handleOnline); window.addEventListener('offline', handleOffline);
+    return () => { window.removeEventListener('online', handleOnline); window.removeEventListener('offline', handleOffline); };
+  }, []);
 
   const visibleQuestions = useMemo(() => {
     const query = search.trim().toLowerCase();
@@ -35,9 +45,10 @@ export function FeedPage({ role, onBack }: { role: UserRole; onBack: () => void 
       .sort((left, right) => sortByAnswers ? right.answerCount - left.answerCount : questions.indexOf(left) - questions.indexOf(right));
   }, [filter, questions, search, sortByAnswers]);
 
-  function addQuestion(payload: { title: string; body: string; category: FeedCategory; hasVoice: boolean }) {
+  function addQuestion(payload: { title: string; body: string; category: FeedCategory; hasVoice: boolean; hasPhoto: boolean; photoName?: string; photoPreview?: string }) {
     const newQuestion: FeedQuestion = { id: `question-${Date.now()}`, ...payload, authorName: 'Steve D.', authorLocation: 'Votre exploitation', createdAt: 'À l’instant', answerCount: 0 };
     setQuestions((current) => [newQuestion, ...current]);
+    if (!isOnline) { queueOfflineDraft(payload); setOfflineCount((current) => current + 1); }
     setComposerOpen(false);
   }
 
@@ -71,6 +82,7 @@ export function FeedPage({ role, onBack }: { role: UserRole; onBack: () => void 
         <div className="ag-feed-network-state"><span /><div><strong>Réseau actif</strong><small>Les spécialistes de votre zone sont en ligne</small></div></div>
       </div>
 
+      <div className={isOnline ? 'ag-feed-sync-banner ag-feed-sync-online' : 'ag-feed-sync-banner ag-feed-sync-offline'}><span /><strong>{isOnline ? 'Réseau disponible' : 'Mode hors-ligne'}</strong><small>{isOnline ? (offlineCount ? `${offlineCount} brouillon(s) synchronisé(s)` : 'Vos questions seront synchronisées automatiquement') : 'Questions et photos enregistrées sur cet appareil'}</small>{offlineCount > 0 && <span className="ag-feed-sync-count">{offlineCount}</span>}</div>
       {composerOpen && <QuestionComposer onPublished={addQuestion} onClose={() => setComposerOpen(false)} />}
 
       <div className="ag-feed-layout">
@@ -100,7 +112,7 @@ export function FeedPage({ role, onBack }: { role: UserRole; onBack: () => void 
 function ExpertFeedWorkspace({ onBack }: { onBack: () => void }) {
   return <motion.div className="agri-role-page agri-expert-feed-page" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: .38 }}>
     <header className="agri-role-page-hero"><div><button type="button" className="agri-role-back" onClick={onBack}><ArrowLeft className="h-4 w-4" /> Retour à mon espace expert</button><div className="agri-role-eyebrow"><span /> File d’expertise · Réseau actif</div><h1>Les producteurs attendent.<br /><em>Votre expertise agit.</em></h1><p>Qualifier les demandes, prioriser les urgences et apporter une réponse certifiée depuis un seul espace de travail.</p></div><div className="agri-role-hero-orb agri-role-hero-orb-expert"><BriefcaseBusiness className="h-7 w-7" /><strong>12</strong><span>demandes à traiter</span></div></header>
-    <div className="agri-role-stat-grid"><RoleFeedStat label="À qualifier" value="12" detail="4 prioritaires" tone="green" /><RoleFeedStat label="Réponses cette semaine" value="38" detail="+18% vs. semaine passée" tone="gold" /><RoleFeedStat label="Délai moyen" value="18 min" detail="objectif réseau · 30 min" tone="blue" /><RoleFeedStat label="Satisfaction" value="4,9/5" detail="74 avis producteurs" tone="violet" /></div>
+    <div className="agri-role-stat-grid"><RoleFeedStat label="À qualifier" value="12" detail="4 prioritaires" tone="green" /><RoleFeedStat label="Réponses cette semaine" value="38" detail="+18% vs. semaine passée" tone="gold" /><RoleFeedStat label="Délai moyen" value="18 min" detail="objectif réseau · 30 min" tone="blue" /><RoleFeedStat label="Satisfaction" value="4,9/5" detail="74 avis producteurs" tone="violet" /></div><section className="agri-diagnostic-card"><div className="agri-diagnostic-copy"><span className="agri-role-eyebrow"><span /> Vision terrain · Diagnostic assisté</span><h2>Une photo, des indices exploitables.</h2><p>Les producteurs peuvent joindre une image HD de la plante ou de l’animal. Qualifiez les symptômes, annotez l’observation et envoyez votre première hypothèse.</p><div className="agri-diagnostic-tags"><span>HD sécurisé</span><span>Annotation expert</span><span>Historique du cas</span></div></div><div className="agri-diagnostic-visual"><div className="agri-diagnostic-leaf">◒</div><span>Photo reçue · Maïs · 4,2 Mo</span><b>À analyser</b></div></section>
     <div className="agri-role-work-grid"><section className="agri-role-work-card"><div className="agri-role-card-head"><div><span>À traiter maintenant</span><h2>Votre file de qualification</h2></div><span className="agri-role-live"><i /> En direct</span></div><ExpertFeedQueue title="Feuilles de maïs jaunissantes" detail="Awa Traoré · Agriculture · il y a 9 min" tag="Prioritaire" tone="red" /><ExpertFeedQueue title="Suspicion de maladie aviaire" detail="Moussa K. · Élevage · il y a 24 min" tag="Nouveau" tone="gold" /><ExpertFeedQueue title="Qualité de l’eau du bassin" detail="Issa O. · Pisciculture · il y a 41 min" tag="À qualifier" tone="blue" /><button type="button" className="agri-role-card-link">Ouvrir toute la file <ArrowRight className="h-4 w-4" /></button></section><aside className="agri-role-work-card agri-role-work-card-dark"><div className="agri-role-card-head"><div><span>Votre permanence</span><h2>Les rendez-vous du jour</h2></div><Radio className="h-5 w-5" /></div><div className="agri-role-agenda-line"><strong>09:30</strong><div><b>Appel avec Karim Sawadogo</b><small>Suivi parcelle · Ouagadougou</small></div><CheckCircle2 className="h-4 w-4" /></div><div className="agri-role-agenda-line"><strong>11:00</strong><div><b>Visite d’exploitation</b><small>Élevage · Koubri</small></div><Clock3 className="h-4 w-4" /></div><div className="agri-role-agenda-line"><strong>15:30</strong><div><b>Permanence réseau</b><small>Questions ouvertes · En ligne</small></div><Radio className="h-4 w-4" /></div></aside></div>
   </motion.div>;
 }

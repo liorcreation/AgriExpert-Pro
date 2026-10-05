@@ -1,5 +1,5 @@
-const CACHE_NAME = 'agriexpert-shell-v2';
-const APP_SHELL = ['/', '/index.html', '/manifest.webmanifest', '/brand/app-icon.svg', '/brand/app-icon-32.png', '/brand/app-icon-180.png', '/brand/app-icon-192.png', '/brand/app-icon-512.png'];
+const CACHE_NAME = 'agriexpert-shell-v3';
+const APP_SHELL = ['/', '/index.html', '/manifest.webmanifest', '/sw.js', '/brand/app-icon.svg', '/brand/app-icon-32.png', '/brand/app-icon-180.png', '/brand/app-icon-192.png', '/brand/app-icon-512.png'];
 
 self.addEventListener('install', (event) => {
   event.waitUntil(caches.open(CACHE_NAME).then((cache) => cache.addAll(APP_SHELL)));
@@ -11,6 +11,14 @@ self.addEventListener('activate', (event) => {
     caches.keys().then((keys) => Promise.all(keys.filter((key) => key.startsWith('agriexpert-') && key !== CACHE_NAME).map((key) => caches.delete(key))))
   );
   self.clients.claim();
+});
+
+self.addEventListener('sync', (event) => {
+  if (event.tag === 'agriexpert-sync') event.waitUntil(Promise.resolve());
+});
+
+self.addEventListener('message', (event) => {
+  if (event.data?.type === 'AGRIEXPERT_QUEUE_SYNC') self.registration.sync?.register('agriexpert-sync');
 });
 
 self.addEventListener('fetch', (event) => {
