@@ -19,7 +19,8 @@ export async function onRequest(context) {
     const [rows, count] = await Promise.all([
       env.DB.prepare(`SELECT q.id, q.category, q.title, q.body, q.language, q.has_voice, q.has_photo, q.photo_name, q.status, q.created_at, u.name AS author_name,
         (SELECT COUNT(*) FROM question_answers a WHERE a.question_id = q.id) AS answer_count,
-        (SELECT COUNT(*) FROM question_reactions r WHERE r.question_id = q.id AND r.reaction = 'useful') AS useful_count
+        (SELECT COUNT(*) FROM question_reactions r WHERE r.question_id = q.id AND r.reaction = 'useful') AS useful_count,
+        (SELECT d.id FROM diagnoses d WHERE d.question_id = q.id ORDER BY d.id DESC LIMIT 1) AS diagnosis_id
         FROM questions q JOIN users u ON u.id = q.author_user_id ${where} ORDER BY q.id DESC LIMIT ? OFFSET ?`)
         .bind(...values, perPage, (page - 1) * perPage).all(),
       env.DB.prepare(`SELECT COUNT(*) AS total FROM questions q ${where}`).bind(...values).first(),
@@ -55,6 +56,10 @@ export async function onRequest(context) {
   if (attachmentIds.length) {
     await env.DB.prepare(`UPDATE media_assets SET question_id = ? WHERE owner_user_id = ? AND id IN (${attachmentIds.map(() => '?').join(',')})`)
       .bind(result.id, user.id, ...attachmentIds).run();
+  }
+  const diagnosisId = Number(input.diagnosisId);
+  if (Number.isInteger(diagnosisId) && diagnosisId > 0) {
+    await env.DB.prepare('UPDATE diagnoses SET question_id = ? WHERE id = ? AND author_user_id = ?').bind(result.id, diagnosisId, user.id).run();
   }
   return json(request, env, { data: { ...result, author_name: user.name } }, 201);
 }

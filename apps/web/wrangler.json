@@ -6,7 +6,8 @@
   "vars": {
     "ALLOWED_ORIGIN": "https://agriexpert-pro.pages.dev",
     "SUPABASE_URL": "https://qoufscpuusjrtssezkai.supabase.co",
-    "SUPABASE_BUCKET": "agriexpert-media"
+    "SUPABASE_BUCKET": "agriexpert-media",
+    "OPENAI_VISION_MODEL": "gpt-6-astra"
   },
   "d1_databases": [
     {

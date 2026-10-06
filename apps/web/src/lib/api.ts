@@ -69,6 +69,7 @@ export type PersistedQuestion = {
   status?: 'open' | 'answered' | 'closed';
   answer_count?: number;
   useful_count?: number;
+  diagnosis_id?: number | null;
   answer?: { id: number; body: string; language: 'fr' | 'mo'; certified: number; created_at: string; expert_name: string; expert_role?: string; expert_profile?: string } | null;
 };
 
@@ -85,7 +86,19 @@ export async function uploadMedia(file: Blob, kind: 'photo' | 'voice', fileName 
   return request<{ data: UploadedMedia }>('/media', { method: 'POST', body: form, headers: { Accept: 'application/json' } });
 }
 
-export function publishQuestion(input: { title: string; body: string; category: string; hasVoice?: boolean; hasPhoto?: boolean; photoName?: string; attachmentIds?: number[] }) {
+export type PhotoDiagnosis = {
+  id: number;
+  media_asset_id: number;
+  category: string;
+  status: string;
+  result: { summary: string; confidence: number; observations: string[]; hypotheses: Array<{ label: string; confidence: number; rationale: string }>; next_steps: string[]; red_flags: string[]; expert_needed: boolean; disclaimer: string };
+};
+
+export function analyzePhoto(mediaId: number, category: string, context: string) {
+  return request<{ data: PhotoDiagnosis }>('/diagnostics', { method: 'POST', body: JSON.stringify({ mediaId, category, context }) });
+}
+
+export function publishQuestion(input: { title: string; body: string; category: string; hasVoice?: boolean; hasPhoto?: boolean; photoName?: string; attachmentIds?: number[]; diagnosisId?: number }) {
   return request<{ data: PersistedQuestion }>('/questions', { method: 'POST', body: JSON.stringify(input) });
 }
 

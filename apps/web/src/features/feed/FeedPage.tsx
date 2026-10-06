@@ -88,14 +88,14 @@ export function FeedPage({ role, onBack }: { role: UserRole; onBack: () => void 
       .sort((left, right) => sortByAnswers ? right.answerCount - left.answerCount : questions.indexOf(left) - questions.indexOf(right));
   }, [filter, questions, search, sortByAnswers]);
 
-  async function addQuestion(payload: { title: string; body: string; category: FeedCategory; hasVoice: boolean; hasPhoto: boolean; photo?: File; voice?: Blob; photoName?: string; photoPreview?: string }) {
+  async function addQuestion(payload: { title: string; body: string; category: FeedCategory; hasVoice: boolean; hasPhoto: boolean; photo?: File; voice?: Blob; photoName?: string; photoPreview?: string; photoAssetId?: number; diagnosisId?: number }) {
     if (isOnline && isApiConfigured) {
       try {
         const attachments = await Promise.all([
-          payload.photo ? uploadMedia(payload.photo, 'photo', payload.photo.name) : null,
+          payload.photoAssetId ? null : payload.photo ? uploadMedia(payload.photo, 'photo', payload.photo.name) : null,
           payload.voice ? uploadMedia(payload.voice, 'voice', 'question.webm') : null,
         ]);
-        const response = await publishQuestion({ title: payload.title, body: payload.body, category: payload.category, hasVoice: payload.hasVoice, hasPhoto: payload.hasPhoto, photoName: payload.photoName, attachmentIds: attachments.flatMap((item) => item ? [item.data.id] : []) });
+        const response = await publishQuestion({ title: payload.title, body: payload.body, category: payload.category, hasVoice: payload.hasVoice, hasPhoto: payload.hasPhoto, photoName: payload.photoName, diagnosisId: payload.diagnosisId, attachmentIds: [payload.photoAssetId, ...attachments.flatMap((item) => item ? [item.data.id] : [])].filter((item): item is number => Number.isInteger(item)) });
         setQuestions((current) => [mapPersistedQuestion(response.data), ...current]);
         setComposerOpen(false);
         return;
