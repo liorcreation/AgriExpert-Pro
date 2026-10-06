@@ -12,13 +12,14 @@ type ApiUser = {
   plan: 'free' | 'pro' | 'institution';
 };
 
-type AuthResponse = { data: { user: ApiUser; token: string } };
+type AuthResponse = { data: { user: ApiUser; token?: string } };
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   if (!API_URL) throw new Error('API AgriExpert non configurée.');
 
   const response = await fetch(`${API_URL}${path}`, {
     ...init,
+    credentials: 'include',
     headers: { Accept: 'application/json', 'Content-Type': 'application/json', ...(init?.headers ?? {}) },
   });
 
@@ -39,3 +40,10 @@ export function loginAccount(input: { identifier: string; method: 'email' | 'pho
   return request<AuthResponse>('/auth/login', { method: 'POST', body: JSON.stringify({ identifier: input.identifier, method: input.method, password: input.password }) });
 }
 
+export function currentAccount() {
+  return request<{ data: { user: ApiUser } }>('/auth/me');
+}
+
+export function logoutAccount() {
+  return request<{ message: string }>('/auth/logout', { method: 'POST' });
+}

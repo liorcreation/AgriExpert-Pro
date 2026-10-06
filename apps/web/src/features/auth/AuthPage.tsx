@@ -1,8 +1,8 @@
-import { useState, type FormEvent } from 'react';
+import { useEffect, useState, type FormEvent } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { ArrowRight, BadgeCheck, Check, Eye, EyeOff, Leaf, LockKeyhole, Mail, MapPin, Phone, ShieldCheck, Sparkles, UsersRound } from 'lucide-react';
 import { BrandLogo } from '../../components/brand/BrandLogo';
-import { isApiConfigured, loginAccount, registerAccount } from '../../lib/api';
+import { currentAccount, isApiConfigured, loginAccount, registerAccount } from '../../lib/api';
 import type { ExpertProfile, ProfileSpecialty, ProducerProfile, SubscriptionPlan, UserRole } from '../../types/shell';
 
 export type AuthSession = { name: string; role: UserRole; profile?: ProfileSpecialty; plan?: SubscriptionPlan; token?: string; guest?: boolean };
@@ -32,6 +32,17 @@ export function AuthPage({ onAuthenticated }: { onAuthenticated: (session: AuthS
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const IdentifierIcon = method === 'phone' ? Phone : Mail;
+
+  useEffect(() => {
+    if (!isApiConfigured) return;
+    let active = true;
+    currentAccount().then((response) => {
+      if (!active) return;
+      const user = response.data.user;
+      onAuthenticated({ name: user.name, role: user.role, profile: (user.profile ?? undefined) as ProfileSpecialty | undefined, plan: user.plan });
+    }).catch(() => undefined);
+    return () => { active = false; };
+  }, [onAuthenticated]);
 
   const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();

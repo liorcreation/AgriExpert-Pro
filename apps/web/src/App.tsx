@@ -47,6 +47,7 @@ import { AppSidebar } from './components/shell/AppSidebar';
 import { BrandIntro } from './components/brand/BrandIntro';
 import { InstallAppButton } from './components/shell/InstallAppButton';
 import { AuthPage, type AuthSession } from './features/auth/AuthPage';
+import { isApiConfigured, logoutAccount } from './lib/api';
 import type { LanguageCode, NavigationKey, ProfileSpecialty, SubscriptionPlan, UserRole } from './types/shell';
 
 const EmergencyPage = lazy(async () => ({ default: (await import('./features/emergencies/EmergencyPage')).EmergencyPage }));
@@ -65,6 +66,7 @@ function shouldShowBrandIntro() {
 
 function readAuthSession(): AuthSession | null {
   if (typeof window === 'undefined') return null;
+  if (isApiConfigured) return null;
   try {
     const stored = window.localStorage.getItem('agriexpert-auth-session');
     return stored ? JSON.parse(stored) as AuthSession : null;
@@ -100,6 +102,7 @@ function App() {
     setShowBrandIntro(false);
   }, []);
   const completeAuth = useCallback((session: AuthSession) => {
+    if (isApiConfigured && session.guest) return;
     try { window.localStorage.setItem('agriexpert-auth-session', JSON.stringify(session)); } catch { /* Storage can be unavailable in private contexts. */ }
     setAuthSession(session);
     setRole(session.role);
@@ -116,6 +119,7 @@ function App() {
     });
   }, []);
   const logout = useCallback(() => {
+    if (isApiConfigured) void logoutAccount().catch(() => undefined);
     try { window.localStorage.removeItem('agriexpert-auth-session'); } catch { /* Storage can be unavailable in private contexts. */ }
     setAuthSession(null);
     setOverlay(null);

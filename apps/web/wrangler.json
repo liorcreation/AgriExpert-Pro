@@ -1,0 +1,13 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "agriexpert-pro",
+  "pages_build_output_dir": "./dist",
+  "compatibility_date": "2026-10-06",
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "agriexpert-auth-prod",
+      "database_id": "84559bd7-c3b5-45e0-85da-b63fb3185bce"
+    }
+  ]
+}
