@@ -1,0 +1,47 @@
+services:
+  db:
+    image: postgis/postgis:16-3.4
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: agriexpert
+      POSTGRES_USER: agriexpert
+      POSTGRES_PASSWORD: agriexpert_local_only
+    ports:
+      - "5432:5432"
+    volumes:
+      - agriexpert-postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U agriexpert -d agriexpert"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+
+  api:
+    build:
+      context: ./backend/api
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    environment:
+      APP_NAME: AgriExpert API
+      APP_ENV: local
+      APP_DEBUG: "false"
+      APP_KEY: "base64:AgriExpertLocalDevelopmentKeyReplaceMe="
+      APP_URL: http://localhost:8000
+      LOG_LEVEL: info
+      DB_CONNECTION: pgsql
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_DATABASE: agriexpert
+      DB_USERNAME: agriexpert
+      DB_PASSWORD: agriexpert_local_only
+      SESSION_DRIVER: file
+      CACHE_STORE: file
+      QUEUE_CONNECTION: database
+    ports:
+      - "8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  agriexpert-postgres:
