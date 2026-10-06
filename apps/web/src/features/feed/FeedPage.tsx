@@ -7,7 +7,7 @@ import { QuestionComposer } from '../../components/feed/QuestionComposer';
 import type { FeedCategory, FeedQuestion } from '../../types/feed';
 import type { UserRole } from '../../types/shell';
 import { getOfflineDrafts, queueOfflineDraft, removeOfflineDraft, syncOfflineDrafts } from '../../lib/offlineQueue';
-import { isApiConfigured, listQuestions, publishQuestion, type PersistedQuestion } from '../../lib/api';
+import { answerQuestion, isApiConfigured, listQuestions, publishQuestion, reactToQuestion, uploadMedia, type PersistedQuestion } from '../../lib/api';
 
 type FeedFilter = 'all' | FeedCategory;
 
@@ -24,6 +24,17 @@ function mapPersistedQuestion(question: PersistedQuestion): FeedQuestion {
     hasPhoto: Boolean(question.has_photo),
     photoName: question.photo_name ?? undefined,
     answerCount: question.answer_count ?? 0,
+    usefulCount: question.useful_count ?? 0,
+    answer: question.answer ? {
+      id: String(question.answer.id),
+      expertName: question.answer.expert_name,
+      expertRole: question.answer.expert_role ?? 'Expert AgriExpert',
+      initials: question.answer.expert_name.split(' ').map((item) => item[0]).join('').slice(0, 2),
+      body: question.answer.body,
+      language: question.answer.language,
+      certified: Boolean(question.answer.certified),
+      createdAt: new Intl.DateTimeFormat('fr-FR', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(question.answer.created_at)),
+    } : undefined,
   };
 }
 
@@ -77,10 +88,14 @@ export function FeedPage({ role, onBack }: { role: UserRole; onBack: () => void 
       .sort((left, right) => sortByAnswers ? right.answerCount - left.answerCount : questions.indexOf(left) - questions.indexOf(right));
   }, [filter, questions, search, sortByAnswers]);
 
-  async function addQuestion(payload: { title: string; body: string; category: FeedCategory; hasVoice: boolean; hasPhoto: boolean; photoName?: string; photoPreview?: string }) {
+  async function addQuestion(payload: { title: string; body: string; category: FeedCategory; hasVoice: boolean; hasPhoto: boolean; photo?: File; voice?: Blob; photoName?: string; photoPreview?: string }) {
     if (isOnline && isApiConfigured) {
       try {
-        const response = await publishQuestion(payload);
+        const attachments = await Promise.all([
+          payload.photo ? uploadMedia(payload.photo, 'photo', payload.photo.name) : null,
+          payload.voice ? uploadMedia(payload.voice, 'voice', 'question.webm') : null,
+        ]);
+        const response = await publishQuestion({ title: payload.title, body: payload.body, category: payload.category, hasVoice: payload.hasVoice, hasPhoto: payload.hasPhoto, photoName: payload.photoName, attachmentIds: attachments.flatMap((item) => item ? [item.data.id] : []) });
         setQuestions((current) => [mapPersistedQuestion(response.data), ...current]);
         setComposerOpen(false);
         return;
@@ -88,7 +103,7 @@ export function FeedPage({ role, onBack }: { role: UserRole; onBack: () => void 
         // Keep the question locally and retry when the network is back.
       }
     }
-    const newQuestion: FeedQuestion = { id: `question-${Date.now()}`, ...payload, authorName: 'Vous', authorLocation: 'Votre exploitation', createdAt: 'À l’instant', answerCount: 0 };
+    const newQuestion: FeedQuestion = { id: `question-${Date.now()}`, title: payload.title, body: payload.body, category: payload.category, hasVoice: payload.hasVoice, hasPhoto: payload.hasPhoto, photoName: payload.photoName, photoPreview: payload.photoPreview, authorName: 'Vous', authorLocation: 'Votre exploitation', createdAt: 'À l’instant', answerCount: 0 };
     setQuestions((current) => [newQuestion, ...current]);
     queueOfflineDraft(payload);
     setOfflineCount((current) => current + 1);
@@ -139,7 +154,7 @@ export function FeedPage({ role, onBack }: { role: UserRole; onBack: () => void 
           </section>
 
           <div className="ag-feed-result-row"><p><strong>{visibleQuestions.length}</strong> discussion{visibleQuestions.length > 1 ? 's' : ''} dans votre réseau</p><button type="button" className="ag-feed-sort" onClick={() => setSortByAnswers((current) => !current)}><TrendingUp className="h-3.5 w-3.5" /> {sortByAnswers ? 'Plus de réponses' : 'Plus récentes'} <ArrowUpRight className="h-3.5 w-3.5" /></button></div>
-          <div className="ag-feed-question-list">{visibleQuestions.length > 0 ? visibleQuestions.map((question, index) => <QuestionCard key={question.id} question={question} index={index} onReply={openComposer} />) : <EmptyFeed onReset={() => { setSearch(''); setFilter('all'); }} />}</div>
+          <div className="ag-feed-question-list">{visibleQuestions.length > 0 ? visibleQuestions.map((question, index) => <QuestionCard key={question.id} question={question} index={index} onReply={openComposer} onReaction={async (reacted) => { if (!isApiConfigured || !/^\d+$/.test(question.id)) return; const result = await reactToQuestion(question.id, reacted); setQuestions((current) => current.map((item) => item.id === question.id ? { ...item, reacted, usefulCount: result.data.useful_count } : item)); }} />) : <EmptyFeed onReset={() => { setSearch(''); setFilter('all'); }} />}</div>
         </main>
 
         <aside className="ag-feed-aside">
@@ -155,7 +170,7 @@ export function FeedPage({ role, onBack }: { role: UserRole; onBack: () => void 
 function ExpertFeedWorkspace({ onBack }: { onBack: () => void }) {
   return <motion.div className="agri-role-page agri-expert-feed-page" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: .38 }}>
     <header className="agri-role-page-hero"><div><button type="button" className="agri-role-back" onClick={onBack}><ArrowLeft className="h-4 w-4" /> Retour à mon espace expert</button><div className="agri-role-eyebrow"><span /> File d’expertise · Réseau actif</div><h1>Les producteurs attendent.<br /><em>Votre expertise agit.</em></h1><p>Qualifier les demandes, prioriser les urgences et apporter une réponse certifiée depuis un seul espace de travail.</p></div><div className="agri-role-hero-orb agri-role-hero-orb-expert"><BriefcaseBusiness className="h-7 w-7" /><strong>12</strong><span>demandes à traiter</span></div></header>
-    <div className="agri-role-stat-grid"><RoleFeedStat label="À qualifier" value="12" detail="4 prioritaires" tone="green" /><RoleFeedStat label="Réponses cette semaine" value="38" detail="+18% vs. semaine passée" tone="gold" /><RoleFeedStat label="Délai moyen" value="18 min" detail="objectif réseau · 30 min" tone="blue" /><RoleFeedStat label="Satisfaction" value="4,9/5" detail="74 avis producteurs" tone="violet" /></div><section className="agri-diagnostic-card"><div className="agri-diagnostic-copy"><span className="agri-role-eyebrow"><span /> Vision terrain · Diagnostic assisté</span><h2>Une photo, des indices exploitables.</h2><p>Les producteurs peuvent joindre une image HD de la plante ou de l’animal. Qualifiez les symptômes, annotez l’observation et envoyez votre première hypothèse.</p><div className="agri-diagnostic-tags"><span>HD sécurisé</span><span>Annotation expert</span><span>Historique du cas</span></div></div><div className="agri-diagnostic-visual"><div className="agri-diagnostic-leaf">◒</div><span>Photo reçue · Maïs · 4,2 Mo</span><b>À analyser</b></div></section>
+    <div className="agri-role-stat-grid"><RoleFeedStat label="À qualifier" value="12" detail="4 prioritaires" tone="green" /><RoleFeedStat label="Réponses cette semaine" value="38" detail="+18% vs. semaine passée" tone="gold" /><RoleFeedStat label="Délai moyen" value="18 min" detail="objectif réseau · 30 min" tone="blue" /><RoleFeedStat label="Satisfaction" value="4,9/5" detail="74 avis producteurs" tone="violet" /></div><ExpertAnswerQueue /><section className="agri-diagnostic-card"><div className="agri-diagnostic-copy"><span className="agri-role-eyebrow"><span /> Vision terrain · Diagnostic assisté</span><h2>Une photo, des indices exploitables.</h2><p>Les producteurs peuvent joindre une image HD de la plante ou de l’animal. Qualifiez les symptômes, annotez l’observation et envoyez votre première hypothèse.</p><div className="agri-diagnostic-tags"><span>HD sécurisé</span><span>Annotation expert</span><span>Historique du cas</span></div></div><div className="agri-diagnostic-visual"><div className="agri-diagnostic-leaf">◒</div><span>Photo reçue · Maïs · 4,2 Mo</span><b>À analyser</b></div></section>
     <div className="agri-role-work-grid"><section className="agri-role-work-card"><div className="agri-role-card-head"><div><span>À traiter maintenant</span><h2>Votre file de qualification</h2></div><span className="agri-role-live"><i /> En direct</span></div><ExpertFeedQueue title="Feuilles de maïs jaunissantes" detail="Awa Traoré · Agriculture · il y a 9 min" tag="Prioritaire" tone="red" /><ExpertFeedQueue title="Suspicion de maladie aviaire" detail="Moussa K. · Élevage · il y a 24 min" tag="Nouveau" tone="gold" /><ExpertFeedQueue title="Qualité de l’eau du bassin" detail="Issa O. · Pisciculture · il y a 41 min" tag="À qualifier" tone="blue" /><button type="button" className="agri-role-card-link">Ouvrir toute la file <ArrowRight className="h-4 w-4" /></button></section><aside className="agri-role-work-card agri-role-work-card-dark"><div className="agri-role-card-head"><div><span>Votre permanence</span><h2>Les rendez-vous du jour</h2></div><Radio className="h-5 w-5" /></div><div className="agri-role-agenda-line"><strong>09:30</strong><div><b>Appel avec Karim Sawadogo</b><small>Suivi parcelle · Ouagadougou</small></div><CheckCircle2 className="h-4 w-4" /></div><div className="agri-role-agenda-line"><strong>11:00</strong><div><b>Visite d’exploitation</b><small>Élevage · Koubri</small></div><Clock3 className="h-4 w-4" /></div><div className="agri-role-agenda-line"><strong>15:30</strong><div><b>Permanence réseau</b><small>Questions ouvertes · En ligne</small></div><Radio className="h-4 w-4" /></div></aside></div>
   </motion.div>;
 }
@@ -166,6 +181,20 @@ function InstitutionFeedWorkspace({ onBack }: { onBack: () => void }) {
     <div className="agri-role-stat-grid"><RoleFeedStat label="Demandes nationales" value="1 284" detail="sur les 30 derniers jours" tone="green" /><RoleFeedStat label="Territoires actifs" value="12" detail="régions couvertes" tone="gold" /><RoleFeedStat label="Sujets émergents" value="8" detail="à analyser cette semaine" tone="blue" /><RoleFeedStat label="Réponses certifiées" value="92%" detail="qualité du réseau" tone="violet" /></div>
     <div className="agri-role-work-grid"><section className="agri-role-work-card"><div className="agri-role-card-head"><div><span>Veille des conversations</span><h2>Tendances à examiner</h2></div><span className="agri-role-live"><i /> Actualisé il y a 2 min</span></div><InstitutionFeedSignal title="Maladies aviaires" detail="Centre-Nord · 18 signalements cette semaine" trend="+32%" tone="red" /><InstitutionFeedSignal title="Fertilisation du maïs" detail="Boucle du Mouhoun · 146 demandes" trend="+18%" tone="gold" /><InstitutionFeedSignal title="Qualité de l’eau" detail="Hauts-Bassins · 11 signalements" trend="+9%" tone="blue" /><button type="button" className="agri-role-card-link">Voir l’analyse territoriale <ArrowRight className="h-4 w-4" /></button></section><aside className="agri-role-work-card agri-role-work-card-dark"><div className="agri-role-card-head"><div><span>Décision recommandée</span><h2>À mettre à l’agenda</h2></div><ShieldCheck className="h-5 w-5" /></div><div className="agri-role-decision"><strong>Renforcer la veille aviaire</strong><p>3 départements présentent une hausse simultanée des demandes vétérinaires.</p><button type="button">Ouvrir le brief <ArrowUpRight className="h-4 w-4" /></button></div></aside></div>
   </motion.div>;
+}
+
+function ExpertAnswerQueue() {
+  const [questions, setQuestions] = useState<PersistedQuestion[]>([]);
+  const [drafts, setDrafts] = useState<Record<string, string>>({});
+  const [busy, setBusy] = useState<string | null>(null);
+  useEffect(() => { if (isApiConfigured) void listQuestions().then((response) => setQuestions(response.data.filter((question) => question.status === 'open'))).catch(() => undefined); }, []);
+  async function submit(questionId: number) {
+    const body = drafts[String(questionId)]?.trim();
+    if (!body) return;
+    setBusy(String(questionId));
+    try { await answerQuestion(String(questionId), body); setQuestions((current) => current.filter((question) => question.id !== questionId)); setDrafts((current) => ({ ...current, [String(questionId)]: '' })); } finally { setBusy(null); }
+  }
+  return <section className="agri-role-work-card agri-expert-answer-queue"><div className="agri-role-card-head"><div><span>Persistance active · D1</span><h2>Répondre aux demandes ouvertes</h2></div><span className="agri-role-live"><i /> {questions.length} à traiter</span></div>{questions.length ? questions.slice(0, 3).map((question) => <div className="agri-expert-answer-item" key={question.id}><div><strong>{question.title}</strong><small>{question.category} · {question.author_name} · {question.created_at}</small></div><textarea value={drafts[String(question.id)] ?? ''} onChange={(event) => setDrafts((current) => ({ ...current, [String(question.id)]: event.target.value }))} placeholder="Votre réponse terrain certifiée…" /><button type="button" className="agri-role-card-link" disabled={busy === String(question.id)} onClick={() => void submit(question.id)}>{busy === String(question.id) ? 'Envoi…' : 'Publier la réponse'} <ArrowRight className="h-4 w-4" /></button></div>) : <p className="agri-role-empty">Aucune demande ouverte pour le moment.</p>}</section>;
 }
 
 function RoleFeedStat({ label, value, detail, tone }: { label: string; value: string; detail: string; tone: string }) {

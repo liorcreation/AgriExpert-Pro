@@ -6,9 +6,16 @@ const priorities = new Set(['medium', 'high', 'critical']);
 export async function onRequest(context) {
   const { request, env } = context;
   if (request.method === 'OPTIONS') return options(request, env);
-  if (request.method !== 'POST') return json(request, env, invalid('Méthode non autorisée.'), 405);
   const user = await currentUser(env.DB, request);
   if (!user) return json(request, env, invalid('Connectez-vous pour transmettre un signalement.'), 401);
+  if (request.method === 'GET') {
+    const url = new URL(request.url);
+    const limit = Math.max(1, Math.min(50, Number(url.searchParams.get('limit') ?? 10)));
+    const rows = await env.DB.prepare(`SELECT id, reference, kind, title, description, priority, latitude, longitude, status, created_at
+      FROM emergencies WHERE author_user_id = ? ORDER BY id DESC LIMIT ?`).bind(user.id, limit).all();
+    return json(request, env, { data: rows.results });
+  }
+  if (request.method !== 'POST') return json(request, env, invalid('Méthode non autorisée.'), 405);
   let input = {};
   try { input = await request.json(); } catch { return json(request, env, invalid('Corps JSON invalide.'), 400); }
   const kind = String(input.kind ?? '');
@@ -24,5 +31,12 @@ export async function onRequest(context) {
   const result = await env.DB.prepare(`INSERT INTO emergencies (reference, author_user_id, kind, title, description, priority, latitude, longitude)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?) RETURNING id, reference, kind, title, description, priority, latitude, longitude, status, created_at`)
     .bind(reference, user.id, kind, title, description, priority, latitude, longitude).first();
+  await env.DB.prepare(`INSERT INTO emergency_events (emergency_id, actor_user_id, status, note) VALUES (?, ?, 'open', ?)`)
+    .bind(result.id, user.id, 'Signalement créé par le producteur.').run();
+  const attachmentIds = Array.isArray(input.attachmentIds) ? input.attachmentIds.map(Number).filter(Number.isInteger).slice(0, 4) : [];
+  if (attachmentIds.length) {
+    await env.DB.prepare(`UPDATE media_assets SET emergency_id = ? WHERE owner_user_id = ? AND id IN (${attachmentIds.map(() => '?').join(',')})`)
+      .bind(result.id, user.id, ...attachmentIds).run();
+  }
   return json(request, env, { data: result }, 201);
 }

@@ -597,6 +597,21 @@ body { font-size: 16px; }
 @media (max-width: 1100px) { .agri-directory-hero { grid-template-columns: minmax(0, 1fr) 245px; }.agri-directory-controls { align-items: stretch; flex-wrap: wrap; }.agri-directory-search { flex-basis: 100%; }.agri-directory-filters { flex: 1; overflow-x: auto; }.agri-directory-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 700px) { .agri-directory-hero { grid-template-columns: 1fr; min-height: 620px; border-radius: 18px; padding: 22px 20px; }.agri-directory-hero h1 { font-size: 38px; }.agri-directory-hero-actions { align-items: flex-start; flex-direction: column; gap: 12px; }.agri-directory-network { min-height: 235px; }.agri-directory-network-orbit-one { height: 195px; width: 195px; }.agri-directory-network-orbit-two { height: 128px; width: 128px; }.agri-directory-network-core { height: 105px; width: 105px; }.agri-directory-network-label { right: 0; }.agri-directory-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }.agri-directory-explorer { padding: 14px; }.agri-directory-explorer-head { align-items: flex-start; flex-direction: column; gap: 10px; }.agri-directory-controls { display: grid; grid-template-columns: 1fr auto; }.agri-directory-search { grid-column: 1 / -1; min-width: 0; }.agri-directory-filters { max-width: 100%; overflow-x: auto; }.agri-directory-toggle { justify-self: end; }.agri-directory-spotlight { grid-template-columns: auto minmax(0,1fr); align-items: start; gap: 12px; padding: 14px; }.agri-directory-spotlight-avatar { height: 57px; width: 57px; border-radius: 18px; }.agri-directory-spotlight-name { align-items: flex-start; flex-wrap: wrap; }.agri-directory-spotlight-name h2 { font-size: 16px; }.agri-directory-spotlight-meta { gap: 8px; }.agri-directory-spotlight-actions { grid-column: 1 / -1; display: grid; grid-template-columns: 1fr auto; min-width: 0; }.agri-directory-spotlight-actions .agri-directory-heart { right: 0; top: -53px; }.agri-directory-profile { grid-column: 1 / -1; }.agri-directory-spotlight-detail { grid-column: 1 / -1; align-items: flex-start; flex-direction: column; }.agri-directory-grid { grid-template-columns: 1fr; }.agri-directory-result-row { align-items: flex-start; flex-direction: column; gap: 6px; } }
 
+/* Persistence tranche: expert answers and SOS history */
+.agri-expert-answer-queue { margin-top: 18px; }
+.agri-expert-answer-item { display: grid; gap: 9px; margin-top: 12px; border-top: 1px solid var(--agri-line); padding-top: 12px; }
+.agri-expert-answer-item > div { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+.agri-expert-answer-item strong { color: var(--agri-ink); font-size: .78rem; }
+.agri-expert-answer-item small { color: var(--agri-muted); font-size: .68rem; }
+.agri-expert-answer-item textarea { min-height: 72px; resize: vertical; border: 1px solid var(--agri-line); border-radius: 10px; padding: 10px; background: var(--agri-paper); color: var(--agri-ink); font: inherit; font-size: .76rem; }
+.agri-expert-answer-item textarea:focus { outline: 2px solid rgba(16,185,129,.22); border-color: #10b981; }
+.agri-expert-answer-item .agri-role-card-link { justify-self: start; min-height: 34px; padding: 0 12px; }
+.agri-role-empty { color: var(--agri-muted); font-size: .78rem; }
+.ag-sos-history { margin-top: 14px; border: 1px solid var(--agri-line); border-radius: 14px; padding: 13px; background: var(--agri-card); }
+.ag-sos-history-item { display: grid; gap: 3px; border-top: 1px solid var(--agri-line); margin-top: 9px; padding-top: 9px; }
+.ag-sos-history-item strong { overflow: hidden; color: var(--agri-ink); font-size: .74rem; text-overflow: ellipsis; white-space: nowrap; }
+.ag-sos-history-item small, .ag-sos-history > p { color: var(--agri-muted); font-size: .67rem; }
+
 .agri-directory-signal-one b::before { content: 'Expert'; }
 /* Institutional command center */
 .agri-institutional-page { max-width: 1480px; margin: 0 auto; animation: agri-page-in .38s ease both; }

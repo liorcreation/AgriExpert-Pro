@@ -1,10 +1,10 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { ArrowLeft, ArrowRight, ArrowUpRight, Bug, CheckCircle2, HeartPulse, Leaf, LoaderCircle, MapPinned, Radio, Send, ShieldCheck, Siren, Sparkles, Waves } from 'lucide-react';
 import { AudioRecorder } from '../../components/emergencies/AudioRecorder';
 import { EmergencyMap, type MapPoint } from '../../components/emergencies/EmergencyMap';
 import type { UserRole } from '../../types/shell';
-import { createEmergency, isApiConfigured } from '../../lib/api';
+import { createEmergency, isApiConfigured, listEmergencies, uploadMedia, type PersistedEmergency } from '../../lib/api';
 
 type EmergencyKind = 'veterinary' | 'phytosanitary' | 'livestock_epidemic' | 'pest_attack' | 'water_quality';
 type Priority = 'medium' | 'high' | 'critical';
@@ -30,6 +30,11 @@ export function EmergencyPage({ role, onBack }: { role: UserRole; onBack: () => 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState('');
   const [reference, setReference] = useState('SOS-AGRI-LOCAL');
+  const [history, setHistory] = useState<PersistedEmergency[]>([]);
+
+  useEffect(() => {
+    if (isApiConfigured) void listEmergencies().then((response) => setHistory(response.data)).catch(() => undefined);
+  }, []);
 
   function locateUser() {
     setLocationError(null);
@@ -57,8 +62,10 @@ export function EmergencyPage({ role, onBack }: { role: UserRole; onBack: () => 
       setIsSubmitting(true);
       setSubmitError('');
       try {
-        const response = await createEmergency({ kind, title: title.trim(), description: description.trim(), priority, latitude: userLocation.lat, longitude: userLocation.lng });
+        const audio = audioRecording ? await uploadMedia(audioRecording, 'voice', 'sos-note.webm') : null;
+        const response = await createEmergency({ kind, title: title.trim(), description: description.trim(), priority, latitude: userLocation.lat, longitude: userLocation.lng, attachmentIds: audio ? [audio.data.id] : [] });
         setReference(response.data.reference);
+        setHistory((current) => [{ id: response.data.id, reference: response.data.reference, kind, title: title.trim(), description: description.trim(), priority, latitude: userLocation.lat, longitude: userLocation.lng, status: response.data.status, created_at: new Date().toISOString() }, ...current]);
       } catch (error) {
         setSubmitError(error instanceof Error ? error.message : 'Le signalement n’a pas pu être transmis.');
         setIsSubmitting(false);
@@ -93,7 +100,7 @@ export function EmergencyPage({ role, onBack }: { role: UserRole; onBack: () => 
           <button type="submit" className="ag-sos-submit" disabled={!userLocation || !title.trim() || isSubmitting}><Siren className="h-5 w-5" /> {isSubmitting ? 'Transmission en cours…' : 'Envoyer le signalement'} {audioRecording && <small>· note vocale jointe</small>}</button>{!userLocation && <p className="ag-sos-submit-hint">Activez votre position pour transmettre l’urgence.</p>}{submitError && <p className="ag-sos-error" role="alert">{submitError}</p>}
         </form>
 
-        <aside className="ag-sos-aside"><div className="ag-sos-aside-heading"><span className="ag-sos-card-kicker">04 · Mise en relation</span><h2>Les experts autour de vous</h2><p>La carte se recentre automatiquement dès que votre position est autorisée.</p></div><div className="ag-sos-map-shell"><EmergencyMap userLocation={userLocation} onLocate={locateUser} locating={locating} /></div><div className="ag-sos-expert-queue"><div className="ag-sos-queue-head"><span><i /> Réseau en direct</span><small>3 points actifs</small></div><div className="ag-sos-queue-item"><span className="ag-sos-queue-avatar ag-sos-avatar-gold">AT</span><div><strong>Dr. Adama Traoré</strong><small>Vétérinaire · 2,4 km</small></div><b>En ligne</b></div><div className="ag-sos-queue-item"><span className="ag-sos-queue-avatar ag-sos-avatar-green">AK</span><div><strong>Ing. Awa Kaboré</strong><small>Agronomie · 4,8 km</small></div><b>Disponible</b></div></div><div className="ag-sos-reassurance"><ShieldCheck className="h-4 w-4" /><span>Votre signalement sera proposé en priorité aux professionnels certifiés.</span></div></aside>
+        <aside className="ag-sos-aside"><div className="ag-sos-aside-heading"><span className="ag-sos-card-kicker">04 · Mise en relation</span><h2>Les experts autour de vous</h2><p>La carte se recentre automatiquement dès que votre position est autorisée.</p></div><div className="ag-sos-map-shell"><EmergencyMap userLocation={userLocation} onLocate={locateUser} locating={locating} /></div><div className="ag-sos-expert-queue"><div className="ag-sos-queue-head"><span><i /> Réseau en direct</span><small>3 points actifs</small></div><div className="ag-sos-queue-item"><span className="ag-sos-queue-avatar ag-sos-avatar-gold">AT</span><div><strong>Dr. Adama Traoré</strong><small>Vétérinaire · 2,4 km</small></div><b>En ligne</b></div><div className="ag-sos-queue-item"><span className="ag-sos-queue-avatar ag-sos-avatar-green">AK</span><div><strong>Ing. Awa Kaboré</strong><small>Agronomie · 4,8 km</small></div><b>Disponible</b></div></div><div className="ag-sos-reassurance"><ShieldCheck className="h-4 w-4" /><span>Votre signalement sera proposé en priorité aux professionnels certifiés.</span></div><div className="ag-sos-history"><div className="ag-sos-queue-head"><span>Votre historique SOS</span><small>{history.length} signalement{history.length > 1 ? 's' : ''}</small></div>{history.length ? history.slice(0, 3).map((item) => <div className="ag-sos-history-item" key={item.id}><strong>{item.title}</strong><small>{item.reference} · {item.status === 'open' ? 'Ouvert' : item.status}</small></div>) : <p>Aucun signalement enregistré pour le moment.</p>}</div></aside>
       </div>
     </motion.div>
   );

@@ -5,7 +5,7 @@ import { feedCategoryLabels } from '../../data/feed';
 import type { FeedCategory } from '../../types/feed';
 
 type QuestionComposerProps = {
-  onPublished: (payload: { title: string; body: string; category: FeedCategory; hasVoice: boolean; hasPhoto: boolean; photoName?: string; photoPreview?: string }) => void;
+  onPublished: (payload: { title: string; body: string; category: FeedCategory; hasVoice: boolean; hasPhoto: boolean; photo?: File; voice?: Blob; photoName?: string; photoPreview?: string }) => void;
   onClose: () => void;
 };
 
@@ -27,7 +27,7 @@ export function QuestionComposer({ onPublished, onClose }: QuestionComposerProps
 
   function publish() {
     if (!title.trim() && !body.trim() && !voice) return;
-    onPublished({ title: title.trim() || (photo ? 'Diagnostic demandé par photo' : 'Nouvelle question vocale'), body: body.trim() || 'Question transmise depuis le terrain.', category, hasVoice: Boolean(voice), hasPhoto: Boolean(photo), photoName: photo?.name, photoPreview });
+    onPublished({ title: title.trim() || (photo ? 'Diagnostic demandé par photo' : 'Nouvelle question vocale'), body: body.trim() || 'Question transmise depuis le terrain.', category, hasVoice: Boolean(voice), hasPhoto: Boolean(photo), photo: photo ?? undefined, voice: voice ?? undefined, photoName: photo?.name, photoPreview });
     setTitle('');
     setBody('');
     setVoice(null);

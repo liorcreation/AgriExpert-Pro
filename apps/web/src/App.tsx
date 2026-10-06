@@ -47,7 +47,7 @@ import { AppSidebar } from './components/shell/AppSidebar';
 import { BrandIntro } from './components/brand/BrandIntro';
 import { InstallAppButton } from './components/shell/InstallAppButton';
 import { AuthPage, type AuthSession } from './features/auth/AuthPage';
-import { isApiConfigured, logoutAccount } from './lib/api';
+import { getPreferences, isApiConfigured, logoutAccount, savePreferences } from './lib/api';
 import type { LanguageCode, NavigationKey, ProfileSpecialty, SubscriptionPlan, UserRole } from './types/shell';
 
 const EmergencyPage = lazy(async () => ({ default: (await import('./features/emergencies/EmergencyPage')).EmergencyPage }));
@@ -88,6 +88,14 @@ function App() {
   const [overlay, setOverlay] = useState<'search' | 'notifications' | 'profile' | null>(null);
 
   useEffect(() => { document.documentElement.classList.toggle('dark', darkMode); }, [darkMode]);
+  useEffect(() => {
+    if (!authSession || !isApiConfigured) return;
+    void getPreferences().then((response) => {
+      setLanguage(response.data.language);
+      setVoiceEnabled(Boolean(response.data.voice_enabled));
+      setDarkMode(Boolean(response.data.dark_mode));
+    }).catch(() => undefined);
+  }, [authSession]);
   useEffect(() => {
     const handleShortcut = (event: KeyboardEvent) => {
       if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') { event.preventDefault(); setOverlay('search'); }
@@ -133,7 +141,7 @@ function App() {
       <div className="agri-atmosphere agri-atmosphere-one" /><div className="agri-atmosphere agri-atmosphere-two" />
       <AppSidebar activeKey={activeKey} role={role} collapsed={sidebarCollapsed} mobileOpen={mobileSidebarOpen} onNavigate={navigate} onCollapseToggle={() => setSidebarCollapsed((current) => !current)} onMobileClose={() => setMobileSidebarOpen(false)} />
       <div className="agri-workspace">
-        <TopBar role={role} language={language} voiceEnabled={voiceEnabled} darkMode={darkMode} onMenuOpen={() => setMobileSidebarOpen(true)} onRoleChange={updateRole} onLanguageChange={setLanguage} onVoiceToggle={() => setVoiceEnabled((current) => !current)} onThemeToggle={() => setDarkMode((current) => !current)} onSearch={() => setOverlay('search')} onNotifications={() => setOverlay(overlay === 'notifications' ? null : 'notifications')} onProfile={() => setOverlay(overlay === 'profile' ? null : 'profile')} />
+        <TopBar role={role} language={language} voiceEnabled={voiceEnabled} darkMode={darkMode} onMenuOpen={() => setMobileSidebarOpen(true)} onRoleChange={updateRole} onLanguageChange={(next) => { setLanguage(next); if (isApiConfigured) void savePreferences({ language: next, voiceEnabled, darkMode }); }} onVoiceToggle={() => setVoiceEnabled((current) => { const next = !current; if (isApiConfigured) void savePreferences({ language, voiceEnabled: next, darkMode }); return next; })} onThemeToggle={() => setDarkMode((current) => { const next = !current; if (isApiConfigured) void savePreferences({ language, voiceEnabled, darkMode: next }); return next; })} onSearch={() => setOverlay('search')} onNotifications={() => setOverlay(overlay === 'notifications' ? null : 'notifications')} onProfile={() => setOverlay(overlay === 'profile' ? null : 'profile')} />
         {overlay === 'search' && <CommandPalette onClose={() => setOverlay(null)} navigate={(key) => { navigate(key); setOverlay(null); }} />}
         {overlay === 'notifications' && <NotificationPanel onClose={() => setOverlay(null)} />}
         {overlay === 'profile' && <ProfilePanel role={role} profile={authSession.profile} plan={authSession.plan} name={authSession.name} onClose={() => setOverlay(null)} onLogout={logout} />}

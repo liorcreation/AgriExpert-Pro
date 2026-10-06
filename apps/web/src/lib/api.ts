@@ -19,10 +19,12 @@ type AuthResponse = { data: { user: ApiUser; token?: string } };
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   if (!API_URL) throw new Error('API AgriExpert non configurée.');
 
+  const headers = new Headers({ Accept: 'application/json', ...(init?.headers ?? {}) });
+  if (!(init?.body instanceof FormData) && !headers.has('Content-Type')) headers.set('Content-Type', 'application/json');
   const response = await fetch(`${API_URL}${path}`, {
     ...init,
     credentials: 'include',
-    headers: { Accept: 'application/json', 'Content-Type': 'application/json', ...(init?.headers ?? {}) },
+    headers,
   });
 
   const payload = await response.json().catch(() => ({})) as { message?: string; errors?: Record<string, string[]> };
@@ -64,19 +66,53 @@ export type PersistedQuestion = {
   has_voice: number;
   has_photo: number;
   photo_name?: string | null;
+  status?: 'open' | 'answered' | 'closed';
   answer_count?: number;
+  useful_count?: number;
+  answer?: { id: number; body: string; language: 'fr' | 'mo'; certified: number; created_at: string; expert_name: string; expert_role?: string; expert_profile?: string } | null;
 };
 
 export function listQuestions() {
   return request<{ data: PersistedQuestion[]; total: number }>('/questions');
 }
 
-export function publishQuestion(input: { title: string; body: string; category: string; hasVoice?: boolean; hasPhoto?: boolean; photoName?: string }) {
+export type UploadedMedia = { id: number; kind: 'photo' | 'voice'; file_name?: string; mime_type: string; size_bytes: number };
+
+export async function uploadMedia(file: Blob, kind: 'photo' | 'voice', fileName = 'terrain-media') {
+  const form = new FormData();
+  form.append('file', file, fileName);
+  form.append('kind', kind);
+  return request<{ data: UploadedMedia }>('/media', { method: 'POST', body: form, headers: { Accept: 'application/json' } });
+}
+
+export function publishQuestion(input: { title: string; body: string; category: string; hasVoice?: boolean; hasPhoto?: boolean; photoName?: string; attachmentIds?: number[] }) {
   return request<{ data: PersistedQuestion }>('/questions', { method: 'POST', body: JSON.stringify(input) });
 }
 
 export type EmergencyReceipt = { data: { id: number; reference: string; status: string } };
 
-export function createEmergency(input: { kind: string; title: string; description: string; priority: string; latitude: number; longitude: number }) {
+export function createEmergency(input: { kind: string; title: string; description: string; priority: string; latitude: number; longitude: number; attachmentIds?: number[] }) {
   return request<EmergencyReceipt>('/emergencies', { method: 'POST', body: JSON.stringify(input) });
+}
+
+export type PersistedEmergency = { id: number; reference: string; kind: string; title: string; description: string; priority: string; latitude: number; longitude: number; status: string; created_at: string };
+
+export function listEmergencies() {
+  return request<{ data: PersistedEmergency[] }>('/emergencies');
+}
+
+export function reactToQuestion(questionId: string, reacted: boolean) {
+  return request<{ data: { question_id: number; useful_count: number; reacted: boolean } }>(`/questions/${questionId}/reaction`, { method: reacted ? 'POST' : 'DELETE' });
+}
+
+export function answerQuestion(questionId: string, body: string, language: 'fr' | 'mo' = 'fr') {
+  return request<{ data: { id: number; question_id: number; body: string; language: 'fr' | 'mo'; certified: number; created_at: string; expert_name: string; expert_role: string; expert_profile?: string } }>(`/questions/${questionId}/answers`, { method: 'POST', body: JSON.stringify({ body, language }) });
+}
+
+export function getPreferences() {
+  return request<{ data: { language: 'fr' | 'mo'; voice_enabled: number; dark_mode: number } }>('/preferences');
+}
+
+export function savePreferences(input: { language: 'fr' | 'mo'; voiceEnabled: boolean; darkMode: boolean }) {
+  return request<{ data: { language: 'fr' | 'mo'; voice_enabled: number; dark_mode: number } }>('/preferences', { method: 'PUT', body: JSON.stringify(input) });
 }
