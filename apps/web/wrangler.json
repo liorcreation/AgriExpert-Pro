@@ -4,7 +4,9 @@
   "pages_build_output_dir": "./dist",
   "compatibility_date": "2026-10-06",
   "vars": {
-    "ALLOWED_ORIGIN": "https://agriexpert-pro.pages.dev"
+    "ALLOWED_ORIGIN": "https://agriexpert-pro.pages.dev",
+    "SUPABASE_URL": "https://qoufscpuusjrtssezkai.supabase.co",
+    "SUPABASE_BUCKET": "agriexpert-media"
   },
   "d1_databases": [
     {
