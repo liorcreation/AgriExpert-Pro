@@ -55,6 +55,40 @@ async function digestHex(value) {
   return bytesToHex(new Uint8Array(await crypto.subtle.digest('SHA-256', encoder.encode(value))));
 }
 
+function decodeBase64Url(value) {
+  const normalized = value.replace(/-/g, '+').replace(/_/g, '/');
+  const decoded = atob(normalized.padEnd(Math.ceil(normalized.length / 4) * 4, '='));
+  return Uint8Array.from(decoded, (character) => character.charCodeAt(0));
+}
+
+function decodeJwtPart(value) {
+  return JSON.parse(new TextDecoder().decode(decodeBase64Url(value)));
+}
+
+let googleKeysCache;
+
+export async function verifyGoogleCredential(credential, clientId) {
+  const parts = String(credential ?? '').split('.');
+  if (parts.length !== 3 || !clientId) throw new Error('Google credential invalide.');
+  const header = decodeJwtPart(parts[0]);
+  const claims = decodeJwtPart(parts[1]);
+  if (header.alg !== 'RS256' || !header.kid || !['accounts.google.com', 'https://accounts.google.com'].includes(claims.iss)) throw new Error('Google credential invalide.');
+  if (claims.aud !== clientId || !claims.sub || !claims.email || claims.email_verified !== true || Number(claims.exp) <= Math.floor(Date.now() / 1000)) throw new Error('Compte Google non vérifié ou audience invalide.');
+  if (!googleKeysCache || googleKeysCache.expiresAt < Date.now()) {
+    const response = await fetch('https://www.googleapis.com/oauth2/v3/certs');
+    if (!response.ok) throw new Error('Vérification Google momentanément indisponible.');
+    const keys = await response.json();
+    const maxAge = Number(response.headers.get('cache-control')?.match(/max-age=(\d+)/)?.[1] ?? 3600);
+    googleKeysCache = { keys: keys.keys, expiresAt: Date.now() + maxAge * 1000 };
+  }
+  const jwk = googleKeysCache.keys.find((key) => key.kid === header.kid && key.kty === 'RSA');
+  if (!jwk) throw new Error('Clé de signature Google inconnue.');
+  const publicKey = await crypto.subtle.importKey('jwk', jwk, { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-256' }, false, ['verify']);
+  const validSignature = await crypto.subtle.verify({ name: 'RSASSA-PKCS1-v1_5' }, publicKey, decodeBase64Url(parts[2]), encoder.encode(`${parts[0]}.${parts[1]}`));
+  if (!validSignature) throw new Error('Signature Google invalide.');
+  return claims;
+}
+
 export async function hashPassword(password) {
   // Cloudflare Workers caps PBKDF2 at 100,000 iterations.
   const iterations = 100000;
@@ -111,6 +145,10 @@ export async function deleteCurrentSession(db, request) {
 
 export function userPayload(user) {
   return { id: user.id, name: user.name, email: user.email, phone: user.phone ?? null, role: user.role, profile: user.profile ?? null, plan: user.plan };
+}
+
+export async function createPasswordlessSession(db, userId, request) {
+  return createSession(db, userId, request);
 }
 
 export function invalid(message) {

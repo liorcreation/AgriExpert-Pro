@@ -4,6 +4,7 @@ import { ArrowLeft, ArrowRight, ArrowUpRight, Bug, CheckCircle2, HeartPulse, Lea
 import { AudioRecorder } from '../../components/emergencies/AudioRecorder';
 import { EmergencyMap, type MapPoint } from '../../components/emergencies/EmergencyMap';
 import type { UserRole } from '../../types/shell';
+import { createEmergency, isApiConfigured } from '../../lib/api';
 
 type EmergencyKind = 'veterinary' | 'phytosanitary' | 'livestock_epidemic' | 'pest_attack' | 'water_quality';
 type Priority = 'medium' | 'high' | 'critical';
@@ -26,6 +27,9 @@ export function EmergencyPage({ role, onBack }: { role: UserRole; onBack: () => 
   const [locationError, setLocationError] = useState<string | null>(null);
   const [audioRecording, setAudioRecording] = useState<Blob | null>(null);
   const [submitted, setSubmitted] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState('');
+  const [reference, setReference] = useState('SOS-AGRI-LOCAL');
 
   function locateUser() {
     setLocationError(null);
@@ -47,15 +51,28 @@ export function EmergencyPage({ role, onBack }: { role: UserRole; onBack: () => 
     );
   }
 
-  function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (isApiConfigured && userLocation) {
+      setIsSubmitting(true);
+      setSubmitError('');
+      try {
+        const response = await createEmergency({ kind, title: title.trim(), description: description.trim(), priority, latitude: userLocation.lat, longitude: userLocation.lng });
+        setReference(response.data.reference);
+      } catch (error) {
+        setSubmitError(error instanceof Error ? error.message : 'Le signalement n’a pas pu être transmis.');
+        setIsSubmitting(false);
+        return;
+      }
+      setIsSubmitting(false);
+    }
     setSubmitted(true);
   }
 
   if (role === 'expert') return <ExpertEmergencyWorkspace onBack={onBack} />;
   if (role === 'institution') return <InstitutionEmergencyWorkspace onBack={onBack} />;
 
-  if (submitted) return <EmergencySuccess onBack={onBack} location={userLocation} />;
+  if (submitted) return <EmergencySuccess onBack={onBack} location={userLocation} reference={reference} />;
 
   return (
     <motion.div className="ag-sos-page" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: .38 }}>
@@ -73,7 +90,7 @@ export function EmergencyPage({ role, onBack }: { role: UserRole; onBack: () => 
 
           <section className="ag-sos-card"><div className="ag-sos-card-head"><span className="ag-sos-card-index ag-sos-index-green">03</span><div><span className="ag-sos-card-kicker">Géolocalisation sécurisée</span><h2>Où êtes-vous ?</h2></div><MapPinned className="ag-sos-card-mark" /></div><p className="ag-sos-card-intro">Nous cherchons le professionnel disponible dans un rayon de 50 km. Cette position ne sera pas publiée dans le fil public.</p><button type="button" className={userLocation ? 'ag-sos-location ag-sos-location-ready' : 'ag-sos-location'} onClick={locateUser} disabled={locating}><span className="ag-sos-location-icon"><MapPinned className="h-4 w-4" /></span><span><strong>{userLocation ? 'Position enregistrée' : 'Utiliser ma position actuelle'}</strong><small>{userLocation ? `${userLocation.lat.toFixed(4)} · ${userLocation.lng.toFixed(4)}` : 'Autorisation requise pour mobiliser l’expert le plus proche'}</small></span>{locating ? <LoaderCircle className="h-4 w-4 animate-spin" /> : userLocation ? <CheckCircle2 className="h-4 w-4" /> : <ArrowRight className="h-4 w-4" />}</button>{locationError && <p className="ag-sos-error">{locationError}</p>}</section>
 
-          <button type="submit" className="ag-sos-submit" disabled={!userLocation || !title.trim()}><Siren className="h-5 w-5" /> Envoyer le signalement {audioRecording && <small>· note vocale jointe</small>}</button>{!userLocation && <p className="ag-sos-submit-hint">Activez votre position pour transmettre l’urgence.</p>}
+          <button type="submit" className="ag-sos-submit" disabled={!userLocation || !title.trim() || isSubmitting}><Siren className="h-5 w-5" /> {isSubmitting ? 'Transmission en cours…' : 'Envoyer le signalement'} {audioRecording && <small>· note vocale jointe</small>}</button>{!userLocation && <p className="ag-sos-submit-hint">Activez votre position pour transmettre l’urgence.</p>}{submitError && <p className="ag-sos-error" role="alert">{submitError}</p>}
         </form>
 
         <aside className="ag-sos-aside"><div className="ag-sos-aside-heading"><span className="ag-sos-card-kicker">04 · Mise en relation</span><h2>Les experts autour de vous</h2><p>La carte se recentre automatiquement dès que votre position est autorisée.</p></div><div className="ag-sos-map-shell"><EmergencyMap userLocation={userLocation} onLocate={locateUser} locating={locating} /></div><div className="ag-sos-expert-queue"><div className="ag-sos-queue-head"><span><i /> Réseau en direct</span><small>3 points actifs</small></div><div className="ag-sos-queue-item"><span className="ag-sos-queue-avatar ag-sos-avatar-gold">AT</span><div><strong>Dr. Adama Traoré</strong><small>Vétérinaire · 2,4 km</small></div><b>En ligne</b></div><div className="ag-sos-queue-item"><span className="ag-sos-queue-avatar ag-sos-avatar-green">AK</span><div><strong>Ing. Awa Kaboré</strong><small>Agronomie · 4,8 km</small></div><b>Disponible</b></div></div><div className="ag-sos-reassurance"><ShieldCheck className="h-4 w-4" /><span>Votre signalement sera proposé en priorité aux professionnels certifiés.</span></div></aside>
@@ -94,6 +111,6 @@ function RoleEmergencyStat({ label, value, detail, tone }: { label: string; valu
 function ExpertEmergencyItem({ title, detail, tag, tone }: { title: string; detail: string; tag: string; tone: string }) { return <button type="button" className={`agri-role-queue agri-role-queue-${tone}`}><span><i />{tag}</span><div><strong>{title}</strong><small>{detail}</small></div><ArrowRight className="h-4 w-4" /></button>; }
 function InstitutionEmergencyItem({ title, detail, tag, tone }: { title: string; detail: string; tag: string; tone: string }) { return <div className={`agri-role-queue agri-role-queue-${tone}`}><span><i />{tag}</span><div><strong>{title}</strong><small>{detail}</small></div><ArrowUpRight className="h-4 w-4" /></div>; }
 
-function EmergencySuccess({ onBack, location }: { onBack: () => void; location: MapPoint | null }) {
-  return <motion.div className="ag-sos-success" initial={{ opacity: 0, scale: .98 }} animate={{ opacity: 1, scale: 1 }}><div className="ag-sos-success-orbit" /><span className="ag-sos-success-icon"><CheckCircle2 className="h-9 w-9" /></span><span className="ag-sos-card-kicker">Signalement transmis</span><h1>Votre demande est prise en compte.</h1><p>La cellule SOS va mobiliser un professionnel certifié selon la priorité et la distance. Gardez votre téléphone disponible.</p><div className="ag-sos-reference"><span>Référence de suivi</span><strong>SOS-AGRI-092026</strong><small>{location ? 'Position GPS jointe au dossier' : 'Position approximative utilisée'}</small></div><button type="button" className="ag-sos-success-button" onClick={onBack}><ArrowLeft className="h-4 w-4" /> Retour au tableau de bord</button></motion.div>;
+function EmergencySuccess({ onBack, location, reference }: { onBack: () => void; location: MapPoint | null; reference: string }) {
+  return <motion.div className="ag-sos-success" initial={{ opacity: 0, scale: .98 }} animate={{ opacity: 1, scale: 1 }}><div className="ag-sos-success-orbit" /><span className="ag-sos-success-icon"><CheckCircle2 className="h-9 w-9" /></span><span className="ag-sos-card-kicker">Signalement transmis</span><h1>Votre demande est prise en compte.</h1><p>La cellule SOS va mobiliser un professionnel certifié selon la priorité et la distance. Gardez votre téléphone disponible.</p><div className="ag-sos-reference"><span>Référence de suivi</span><strong>{reference}</strong><small>{location ? 'Position GPS jointe au dossier' : 'Position approximative utilisée'}</small></div><button type="button" className="ag-sos-success-button" onClick={onBack}><ArrowLeft className="h-4 w-4" /> Retour au tableau de bord</button></motion.div>;
 }

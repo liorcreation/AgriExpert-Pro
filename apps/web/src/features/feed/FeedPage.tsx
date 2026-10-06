@@ -6,9 +6,26 @@ import { QuestionCard } from '../../components/feed/QuestionCard';
 import { QuestionComposer } from '../../components/feed/QuestionComposer';
 import type { FeedCategory, FeedQuestion } from '../../types/feed';
 import type { UserRole } from '../../types/shell';
-import { getOfflineDrafts, queueOfflineDraft, syncOfflineDrafts } from '../../lib/offlineQueue';
+import { getOfflineDrafts, queueOfflineDraft, removeOfflineDraft, syncOfflineDrafts } from '../../lib/offlineQueue';
+import { isApiConfigured, listQuestions, publishQuestion, type PersistedQuestion } from '../../lib/api';
 
 type FeedFilter = 'all' | FeedCategory;
+
+function mapPersistedQuestion(question: PersistedQuestion): FeedQuestion {
+  return {
+    id: String(question.id),
+    category: question.category,
+    title: question.title,
+    body: question.body,
+    authorName: question.author_name,
+    authorLocation: 'Réseau AgriExpert',
+    createdAt: new Intl.DateTimeFormat('fr-FR', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(question.created_at)),
+    hasVoice: Boolean(question.has_voice),
+    hasPhoto: Boolean(question.has_photo),
+    photoName: question.photo_name ?? undefined,
+    answerCount: question.answer_count ?? 0,
+  };
+}
 
 const categoryLabels: Record<FeedFilter, string> = {
   all: 'Tous les sujets',
@@ -21,14 +38,29 @@ const categoryLabels: Record<FeedFilter, string> = {
 export function FeedPage({ role, onBack }: { role: UserRole; onBack: () => void }) {
   const [filter, setFilter] = useState<FeedFilter>('all');
   const [search, setSearch] = useState('');
-  const [questions, setQuestions] = useState(initialQuestions);
+  const [questions, setQuestions] = useState<FeedQuestion[]>(isApiConfigured ? [] : initialQuestions);
   const [composerOpen, setComposerOpen] = useState(false);
   const [sortByAnswers, setSortByAnswers] = useState(false);
   const [isOnline, setIsOnline] = useState(() => typeof navigator === 'undefined' ? true : navigator.onLine);
   const [offlineCount, setOfflineCount] = useState(() => getOfflineDrafts().filter((draft) => draft.status === 'queued').length);
 
   useEffect(() => {
-    const handleOnline = () => { setIsOnline(true); const synced = syncOfflineDrafts(); setOfflineCount(synced.length ? 0 : getOfflineDrafts().filter((draft) => draft.status === 'queued').length); };
+    if (!isApiConfigured) return;
+    listQuestions().then((response) => setQuestions(response.data.map(mapPersistedQuestion))).catch(() => undefined);
+  }, []);
+
+  useEffect(() => {
+    const handleOnline = () => {
+      setIsOnline(true);
+      const queued = getOfflineDrafts().filter((draft) => draft.status === 'queued');
+      if (!isApiConfigured) {
+        const synced = syncOfflineDrafts();
+        setOfflineCount(synced.length ? 0 : queued.length);
+        return;
+      }
+      void Promise.allSettled(queued.map((draft) => publishQuestion(draft).then(() => removeOfflineDraft(draft.id))))
+        .finally(() => setOfflineCount(getOfflineDrafts().filter((draft) => draft.status === 'queued').length));
+    };
     const handleOffline = () => setIsOnline(false);
     window.addEventListener('online', handleOnline); window.addEventListener('offline', handleOffline);
     return () => { window.removeEventListener('online', handleOnline); window.removeEventListener('offline', handleOffline); };
@@ -45,10 +77,21 @@ export function FeedPage({ role, onBack }: { role: UserRole; onBack: () => void 
       .sort((left, right) => sortByAnswers ? right.answerCount - left.answerCount : questions.indexOf(left) - questions.indexOf(right));
   }, [filter, questions, search, sortByAnswers]);
 
-  function addQuestion(payload: { title: string; body: string; category: FeedCategory; hasVoice: boolean; hasPhoto: boolean; photoName?: string; photoPreview?: string }) {
-    const newQuestion: FeedQuestion = { id: `question-${Date.now()}`, ...payload, authorName: 'Steve D.', authorLocation: 'Votre exploitation', createdAt: 'À l’instant', answerCount: 0 };
+  async function addQuestion(payload: { title: string; body: string; category: FeedCategory; hasVoice: boolean; hasPhoto: boolean; photoName?: string; photoPreview?: string }) {
+    if (isOnline && isApiConfigured) {
+      try {
+        const response = await publishQuestion(payload);
+        setQuestions((current) => [mapPersistedQuestion(response.data), ...current]);
+        setComposerOpen(false);
+        return;
+      } catch {
+        // Keep the question locally and retry when the network is back.
+      }
+    }
+    const newQuestion: FeedQuestion = { id: `question-${Date.now()}`, ...payload, authorName: 'Vous', authorLocation: 'Votre exploitation', createdAt: 'À l’instant', answerCount: 0 };
     setQuestions((current) => [newQuestion, ...current]);
-    if (!isOnline) { queueOfflineDraft(payload); setOfflineCount((current) => current + 1); }
+    queueOfflineDraft(payload);
+    setOfflineCount((current) => current + 1);
     setComposerOpen(false);
   }
 

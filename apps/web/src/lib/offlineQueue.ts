@@ -41,3 +41,7 @@ export function syncOfflineDrafts() {
   writeDrafts(synced);
   return synced;
 }
+
+export function removeOfflineDraft(id: string) {
+  writeDrafts(readDrafts().filter((draft) => draft.id !== id));
+}

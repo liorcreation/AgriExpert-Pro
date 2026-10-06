@@ -1,6 +1,8 @@
 const API_URL = (import.meta.env.VITE_API_URL as string | undefined)?.replace(/\/$/, '');
 
 export const isApiConfigured = Boolean(API_URL);
+const GOOGLE_CLIENT_ID = (import.meta.env.VITE_GOOGLE_CLIENT_ID as string | undefined)?.trim() ?? '';
+export const isGoogleConfigured = Boolean(GOOGLE_CLIENT_ID);
 
 type ApiUser = {
   id: number;
@@ -46,4 +48,35 @@ export function currentAccount() {
 
 export function logoutAccount() {
   return request<{ message: string }>('/auth/logout', { method: 'POST' });
+}
+
+export function loginWithGoogle(credential: string, profile: { role?: string; profile?: string; plan?: string }) {
+  return request<AuthResponse>('/auth/google', { method: 'POST', body: JSON.stringify({ credential, ...profile }) });
+}
+
+export type PersistedQuestion = {
+  id: number;
+  category: 'agriculture' | 'livestock' | 'aquaculture' | 'apiculture';
+  title: string;
+  body: string;
+  author_name: string;
+  created_at: string;
+  has_voice: number;
+  has_photo: number;
+  photo_name?: string | null;
+  answer_count?: number;
+};
+
+export function listQuestions() {
+  return request<{ data: PersistedQuestion[]; total: number }>('/questions');
+}
+
+export function publishQuestion(input: { title: string; body: string; category: string; hasVoice?: boolean; hasPhoto?: boolean; photoName?: string }) {
+  return request<{ data: PersistedQuestion }>('/questions', { method: 'POST', body: JSON.stringify(input) });
+}
+
+export type EmergencyReceipt = { data: { id: number; reference: string; status: string } };
+
+export function createEmergency(input: { kind: string; title: string; description: string; priority: string; latitude: number; longitude: number }) {
+  return request<EmergencyReceipt>('/emergencies', { method: 'POST', body: JSON.stringify(input) });
 }
