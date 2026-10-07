@@ -4,6 +4,15 @@ const categories = new Set(['agriculture', 'livestock', 'aquaculture', 'apicultu
 const model = 'gpt-6-astra';
 const bucket = 'agriexpert-media';
 
+class DiagnosticProviderError extends Error {
+  constructor(status, code = 'unknown') {
+    super(`vision_provider_error:${status}:${code}`);
+    this.name = 'DiagnosticProviderError';
+    this.status = status;
+    this.code = code;
+  }
+}
+
 function encodeBase64(bytes) {
   let binary = '';
   const chunkSize = 0x8000;
@@ -26,7 +35,10 @@ Les valeurs confidence sont des nombres de 0 à 100. Pour un animal malade, reco
 
 async function analyzeImage(env, category, context, asset) {
   const imageResponse = await fetch(`${env.SUPABASE_URL}/storage/v1/object/${env.SUPABASE_BUCKET ?? bucket}/${asset.object_key}`, { headers: { apikey: env.SUPABASE_SECRET_KEY, Authorization: `Bearer ${env.SUPABASE_SECRET_KEY}` } });
-  if (!imageResponse.ok) throw new Error('image_unavailable');
+  if (!imageResponse.ok) {
+    console.error('diagnostics_media_fetch_failed', { status: imageResponse.status, assetId: asset.id });
+    throw new Error(`image_unavailable:${imageResponse.status}`);
+  }
   const bytes = new Uint8Array(await imageResponse.arrayBuffer());
   if (bytes.byteLength > 8 * 1024 * 1024) throw new Error('image_too_large');
   const imageUrl = `data:${asset.mime_type};base64,${encodeBase64(bytes)}`;
@@ -35,7 +47,18 @@ async function analyzeImage(env, category, context, asset) {
     headers: { Authorization: `Bearer ${env.OPENAI_API_KEY}`, 'Content-Type': 'application/json' },
     body: JSON.stringify({ model: env.OPENAI_VISION_MODEL ?? model, store: false, input: [{ role: 'user', content: [{ type: 'input_text', text: diagnosisPrompt(category, context) }, { type: 'input_image', image_url: imageUrl, detail: 'high' }] }], text: { format: { type: 'json_object' } }, max_output_tokens: 1200 }),
   });
-  if (!response.ok) throw new Error('vision_provider_error');
+  if (!response.ok) {
+    const providerPayload = await response.json().catch(() => ({}));
+    const providerError = providerPayload?.error ?? {};
+    console.error('diagnostics_provider_failed', {
+      status: response.status,
+      code: providerError.code ?? 'unknown',
+      type: providerError.type ?? 'unknown',
+      message: String(providerError.message ?? '').slice(0, 240),
+      model: env.OPENAI_VISION_MODEL ?? model,
+    });
+    throw new DiagnosticProviderError(response.status, providerError.code ?? providerError.type ?? 'unknown');
+  }
   const payload = await response.json();
   return parseResult(payload.output_text ?? payload.output?.flatMap((item) => item.content ?? []).find((item) => item.type === 'output_text')?.text);
 }
@@ -65,7 +88,13 @@ export async function onRequest(context) {
       VALUES (?, ?, ?, ?, 'completed', ?, ?) RETURNING id, media_asset_id, category, context, status, result_json, provider, model, created_at`).bind(user.id, mediaId, category, contextText, JSON.stringify(result), env.OPENAI_VISION_MODEL ?? model).first();
     return json(request, env, { data: { ...saved, result } }, 201);
   } catch (error) {
-    const message = error instanceof Error && error.message === 'image_too_large' ? 'Photo trop volumineuse pour le diagnostic.' : 'Le diagnostic n’a pas pu être réalisé. Vérifiez la photo ou réessayez.';
+    const errorText = error instanceof Error ? error.message : '';
+    let message = 'Le diagnostic n’a pas pu être réalisé. Vérifiez la photo ou réessayez.';
+    if (errorText === 'image_too_large') message = 'Photo trop volumineuse pour le diagnostic.';
+    else if (errorText.startsWith('image_unavailable')) message = 'La photo n’est plus disponible dans le stockage. Ajoutez-la à nouveau puis réessayez.';
+    else if (error instanceof DiagnosticProviderError && [401, 403].includes(error.status)) message = 'Le service d’analyse n’autorise pas encore cette clé OpenAI. Vérifiez ses permissions Responses et Model capabilities.';
+    else if (error instanceof DiagnosticProviderError && error.status === 429) message = 'Le quota ou la limite d’utilisation OpenAI est atteint. Vérifiez la facturation et les limites du projet.';
+    else if (error instanceof DiagnosticProviderError && error.status === 400) message = 'La photo ou la demande n’a pas été acceptée par le service d’analyse. Essayez une photo plus légère et bien cadrée.';
     return json(request, env, invalid(message), 502);
   }
 }
