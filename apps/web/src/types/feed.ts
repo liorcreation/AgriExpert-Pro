@@ -23,6 +23,7 @@ export type FeedQuestion = {
   hasPhoto?: boolean;
   photoName?: string;
   photoPreview?: string;
+  photoUrl?: string;
   answerCount: number;
   usefulCount?: number;
   reacted?: boolean;

@@ -69,6 +69,7 @@ export type PersistedQuestion = {
   has_voice: number;
   has_photo: number;
   photo_name?: string | null;
+  photo_asset_id?: number | null;
   status?: 'open' | 'answered' | 'closed';
   answer_count?: number;
   useful_count?: number;
@@ -78,6 +79,10 @@ export type PersistedQuestion = {
 
 export function listQuestions() {
   return request<{ data: PersistedQuestion[]; total: number }>('/questions');
+}
+
+export function mediaUrl(mediaId: number) {
+  return API_URL ? `${API_URL}/media/${mediaId}` : '';
 }
 
 export type UploadedMedia = { id: number; kind: 'photo' | 'voice'; file_name?: string; mime_type: string; size_bytes: number };

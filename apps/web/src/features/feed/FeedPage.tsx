@@ -7,7 +7,7 @@ import { QuestionComposer } from '../../components/feed/QuestionComposer';
 import type { FeedCategory, FeedQuestion } from '../../types/feed';
 import type { UserRole } from '../../types/shell';
 import { countPendingOfflineDrafts, queueOfflineDraft, syncOfflineDrafts } from '../../lib/offlineQueue';
-import { answerQuestion, isApiConfigured, listQuestions, publishQuestion, reactToQuestion, uploadMedia, type PersistedQuestion } from '../../lib/api';
+import { answerQuestion, isApiConfigured, listQuestions, mediaUrl, publishQuestion, reactToQuestion, uploadMedia, type PersistedQuestion } from '../../lib/api';
 
 type FeedFilter = 'all' | FeedCategory;
 
@@ -23,6 +23,7 @@ function mapPersistedQuestion(question: PersistedQuestion): FeedQuestion {
     hasVoice: Boolean(question.has_voice),
     hasPhoto: Boolean(question.has_photo),
     photoName: question.photo_name ?? undefined,
+    photoUrl: question.photo_asset_id ? mediaUrl(question.photo_asset_id) : undefined,
     answerCount: question.answer_count ?? 0,
     usefulCount: question.useful_count ?? 0,
     answer: question.answer ? {

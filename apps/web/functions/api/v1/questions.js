@@ -18,6 +18,7 @@ export async function onRequest(context) {
     const perPage = Math.max(1, Math.min(50, Number(url.searchParams.get('per_page') ?? 20)));
     const [rows, count] = await Promise.all([
       env.DB.prepare(`SELECT q.id, q.category, q.title, q.body, q.language, q.has_voice, q.has_photo, q.photo_name, q.status, q.created_at, u.name AS author_name,
+        (SELECT m.id FROM media_assets m WHERE m.question_id = q.id AND m.kind = 'photo' ORDER BY m.id ASC LIMIT 1) AS photo_asset_id,
         (SELECT COUNT(*) FROM question_answers a WHERE a.question_id = q.id) AS answer_count,
         (SELECT COUNT(*) FROM question_reactions r WHERE r.question_id = q.id AND r.reaction = 'useful') AS useful_count,
         (SELECT d.id FROM diagnoses d WHERE d.question_id = q.id ORDER BY d.id DESC LIMIT 1) AS diagnosis_id
