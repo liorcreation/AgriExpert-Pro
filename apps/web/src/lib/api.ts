@@ -182,3 +182,51 @@ export function createBillingCheckout(code: 'pro' | 'institution', idempotencyKe
 export function cancelBillingSubscription() {
   return request<{ data: { cancelledAtPeriodEnd: boolean; currentPeriodEnd?: string | null } }>('/billing', { method: 'POST', body: JSON.stringify({ action: 'cancel-subscription' }) });
 }
+
+export type InstitutionalDashboardData = {
+  scope: { institutionName: string; institutionType: string; accessRole: string };
+  filters: { period: '7d' | '30d' | '90d'; region: string; regions: Array<{ region_code: string; region_name: string }> };
+  kpis: { resolutionRate: number; averageResponseMinutes: number; activeAlerts: number; criticalAlerts: number; availableExperts: number; totalExperts: number; totalRequests: number; resolvedRequests: number };
+  trend: Array<{ day: string; demandes: number; resolues: number; delai: number }>;
+  categories: Array<{ name: string; value: number }>;
+  alerts: Array<{ level: 'critical' | 'high' | 'medium'; title: string; region: string; count: string; time: string }>;
+  heatmap: Array<{ id: string; latitude: number; longitude: number; intensity: 'high' | 'medium' | 'low'; count: number; name: string; region: string }>;
+  coverage: { territoriesCovered: number; responseOperational: number; expertsMobilisable: number; laboratories: number | null };
+  sponsors: Array<{ label: string; status: 'available' | 'suppressed'; value: number | null; count: number | null; requestCount?: number; reason?: string }>;
+  lastUpdated: string;
+  source: string;
+};
+
+function institutionalQuery(period: '7d' | '30d' | '90d', region: string, exportType?: 'csv' | 'report') {
+  const params = new URLSearchParams({ period, region });
+  if (exportType) params.set('export', exportType);
+  return `/institutional?${params.toString()}`;
+}
+
+export function getInstitutionalDashboard(period: '7d' | '30d' | '90d', region: string) {
+  return request<{ data: InstitutionalDashboardData }>(institutionalQuery(period, region));
+}
+
+export async function downloadInstitutionalCsv(period: '7d' | '30d' | '90d', region: string) {
+  if (!API_URL) throw new Error('API AgriExpert non configurée.');
+  const response = await fetch(`${API_URL}${institutionalQuery(period, region, 'csv')}`, { credentials: 'include', headers: { Accept: 'text/csv' } });
+  if (!response.ok) {
+    const payload = await response.json().catch(() => ({})) as { message?: string };
+    throw new Error(payload.message ?? 'Export CSV indisponible.');
+  }
+  const blob = await response.blob();
+  const href = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = href;
+  link.download = `agriexpert-rapport-${period}.csv`;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(href);
+}
+
+export function openInstitutionalReport(period: '7d' | '30d' | '90d', region: string) {
+  if (!API_URL) throw new Error('API AgriExpert non configurée.');
+  const report = window.open(`${API_URL}${institutionalQuery(period, region, 'report')}`, '_blank', 'noopener,noreferrer');
+  if (!report) throw new Error('Le navigateur a bloqué l’ouverture du rapport.');
+}
