@@ -8,6 +8,7 @@ export type FeedAnswer = {
   body: string;
   language: 'fr' | 'mo';
   certified: boolean;
+  voiceAssetId?: number | null;
   createdAt: string;
 };
 

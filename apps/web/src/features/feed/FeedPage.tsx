@@ -1,13 +1,15 @@
 import { useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
-import { ArrowLeft, ArrowRight, ArrowUpRight, BriefcaseBusiness, CheckCircle2, Clock3, Filter, Flame, HelpCircle, Landmark, MessageCircle, Mic, Plus, Radio, Search, ShieldCheck, Sparkles, TrendingUp, UsersRound } from 'lucide-react';
+import { AlertTriangle, ArrowLeft, ArrowRight, ArrowUpRight, BriefcaseBusiness, Camera, Check, CheckCircle2, ChevronDown, CircleDot, Clock3, Filter, FileText, Flame, HelpCircle, ImagePlus, Landmark, LoaderCircle, MapPin, MessageCircle, Mic, Plus, Radio, Search, Send, Settings2, ShieldCheck, Sparkles, TrendingUp, UserRound, UsersRound, X } from 'lucide-react';
 import { initialQuestions, feedCategoryLabels } from '../../data/feed';
 import { QuestionCard } from '../../components/feed/QuestionCard';
 import { QuestionComposer } from '../../components/feed/QuestionComposer';
 import type { FeedCategory, FeedQuestion } from '../../types/feed';
 import type { UserRole } from '../../types/shell';
+import type { NavigationKey } from '../../types/shell';
+import { AudioRecorder } from '../../components/emergencies/AudioRecorder';
 import { countPendingOfflineDrafts, queueOfflineDraft, syncOfflineDrafts } from '../../lib/offlineQueue';
-import { answerQuestion, isApiConfigured, listQuestions, mediaUrl, publishQuestion, reactToQuestion, uploadMedia, type PersistedQuestion } from '../../lib/api';
+import { answerQuestion, getExpertCase, getExpertWorkspace, isApiConfigured, listExpertColleagues, listQuestions, mediaUrl, publishQuestion, reactToQuestion, updateEmergencyAvailability, updateExpertCase, uploadMedia, type ExpertCase, type ExpertWorkspaceData, type PersistedQuestion } from '../../lib/api';
 
 type FeedFilter = 'all' | FeedCategory;
 
@@ -35,6 +37,7 @@ function mapPersistedQuestion(question: PersistedQuestion): FeedQuestion {
       body: question.answer.body,
       language: question.answer.language,
       certified: Boolean(question.answer.certified),
+      voiceAssetId: question.answer.voice_asset_id ?? null,
       createdAt: new Intl.DateTimeFormat('fr-FR', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(question.answer.created_at)),
     } : undefined,
   };
@@ -48,7 +51,7 @@ const categoryLabels: Record<FeedFilter, string> = {
   apiculture: 'Apiculture',
 };
 
-export function FeedPage({ role, onBack }: { role: UserRole; onBack: () => void }) {
+export function FeedPage({ role, onBack, onNavigate }: { role: UserRole; onBack: () => void; onNavigate?: (key: NavigationKey) => void }) {
   const [filter, setFilter] = useState<FeedFilter>('all');
   const [search, setSearch] = useState('');
   const [questions, setQuestions] = useState<FeedQuestion[]>(isApiConfigured ? [] : initialQuestions);
@@ -133,7 +136,7 @@ export function FeedPage({ role, onBack }: { role: UserRole; onBack: () => void 
     window.setTimeout(() => document.getElementById('question-title')?.focus(), 80);
   }
 
-  if (role === 'expert') return <ExpertFeedWorkspace onBack={onBack} />;
+  if (role === 'expert') return <ExpertOperationsWorkspace onBack={onBack} onNavigate={onNavigate} />;
   if (role === 'institution') return <InstitutionFeedWorkspace onBack={onBack} />;
 
   return (
@@ -183,6 +186,80 @@ export function FeedPage({ role, onBack }: { role: UserRole; onBack: () => void 
       </div>
     </motion.div>
   );
+}
+
+function ExpertOperationsWorkspace({ onBack, onNavigate }: { onBack: () => void; onNavigate?: (key: NavigationKey) => void }) {
+  const [workspace, setWorkspace] = useState<ExpertWorkspaceData | null>(null);
+  const [selectedId, setSelectedId] = useState<number | null>(null);
+  const [caseFile, setCaseFile] = useState<ExpertCase | null>(null);
+  const [colleagues, setColleagues] = useState<Array<{ id: number; name: string; profile?: string | null; is_available: number }>>([]);
+  const [draft, setDraft] = useState('');
+  const [infoDraft, setInfoDraft] = useState('');
+  const [annotation, setAnnotation] = useState({ label: '', note: '', x: 38, y: 32, width: 22, height: 18 });
+  const [voice, setVoice] = useState<Blob | null>(null);
+  const [transferTo, setTransferTo] = useState('');
+  const [busy, setBusy] = useState('');
+  const [error, setError] = useState('');
+
+  async function refresh(nextId = selectedId) {
+    try {
+      const [workspaceResponse, colleagueResponse] = await Promise.all([getExpertWorkspace(), listExpertColleagues()]);
+      setWorkspace(workspaceResponse.data);
+      setColleagues(colleagueResponse.data);
+      const targetId = nextId ?? workspaceResponse.data.queue[0]?.id ?? null;
+      if (targetId) {
+        setSelectedId(targetId);
+        const detail = await getExpertCase(targetId);
+        setCaseFile(detail.data);
+      } else { setSelectedId(null); setCaseFile(null); }
+    } catch (reason: unknown) { setError(reason instanceof Error ? reason.message : 'Impossible de charger votre espace expert.'); }
+  }
+
+  useEffect(() => { void refresh(null); }, []);
+
+  async function selectCase(id: number) {
+    setSelectedId(id); setError('');
+    try { const response = await getExpertCase(id); setCaseFile(response.data); } catch (reason: unknown) { setError(reason instanceof Error ? reason.message : 'Dossier indisponible.'); }
+  }
+
+  async function performAction(input: Parameters<typeof updateExpertCase>[1]) {
+    if (!selectedId) return;
+    setBusy(input.action); setError('');
+    try { const response = await updateExpertCase(selectedId, input); setCaseFile(response.data); await refresh(selectedId); if (input.action === 'reply') { setDraft(''); setVoice(null); } if (input.action === 'request-info') setInfoDraft(''); } catch (reason: unknown) { setError(reason instanceof Error ? reason.message : 'Action impossible.'); } finally { setBusy(''); }
+  }
+
+  async function reply() {
+    if (!draft.trim() && !voice) return;
+    let voiceAssetId: number | undefined;
+    setBusy('reply'); setError('');
+    try { if (voice) voiceAssetId = (await uploadMedia(voice, 'voice', 'reponse-expert.webm')).data.id; await performAction({ action: 'reply', body: draft.trim() || 'Réponse vocale jointe.', language: 'fr', voiceAssetId }); } catch (reason: unknown) { setError(reason instanceof Error ? reason.message : 'Envoi de la réponse impossible.'); setBusy(''); }
+  }
+
+  async function toggleAvailability() {
+    if (!workspace) return;
+    setBusy('availability'); setError('');
+    if (workspace.availability.is_available) {
+      try { const response = await updateEmergencyAvailability({ isAvailable: false, radiusKm: workspace.availability.radius_km }); setWorkspace((current) => current ? { ...current, availability: response.data } : current); } catch (reason: unknown) { setError(reason instanceof Error ? reason.message : 'Mise à jour impossible.'); }
+      setBusy(''); return;
+    }
+    if (!navigator.geolocation) { setError('La géolocalisation est nécessaire pour apparaître disponible.'); setBusy(''); return; }
+    navigator.geolocation.getCurrentPosition(async (position) => {
+      try { const response = await updateEmergencyAvailability({ isAvailable: true, latitude: position.coords.latitude, longitude: position.coords.longitude, radiusKm: workspace.availability.radius_km }); setWorkspace((current) => current ? { ...current, availability: response.data } : current); } catch (reason: unknown) { setError(reason instanceof Error ? reason.message : 'Activation de la disponibilité impossible.'); } finally { setBusy(''); }
+    }, () => { setError('Autorisez la position pour être proposé aux producteurs proches.'); setBusy(''); }, { enableHighAccuracy: true, timeout: 8000 });
+  }
+
+  const queue = workspace?.queue ?? [];
+  const photo = caseFile?.media.find((item) => item.kind === 'photo');
+  const producerVoice = caseFile?.media.find((item) => item.kind === 'voice');
+  const annotationCount = caseFile?.annotations.length ?? 0;
+  return <motion.div className="agri-role-page agri-expert-operations" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: .38 }}>
+    <header className="agri-role-page-hero agri-expert-operations-hero"><div><button type="button" className="agri-role-back" onClick={onBack}><ArrowLeft className="h-4 w-4" /> Retour à mon espace expert</button><div className="agri-role-eyebrow"><span /> Espace de travail · Dossiers terrain</div><h1>Chaque demande mérite<br /><em>une réponse précise.</em></h1><p>Ouvrez le dossier complet, prenez la demande en charge, documentez vos observations et clôturez avec une réponse certifiée.</p><div className="agri-expert-hero-actions"><button type="button" className={workspace?.availability.is_available ? 'agri-expert-availability agri-expert-availability-on' : 'agri-expert-availability'} onClick={() => void toggleAvailability()} disabled={busy === 'availability'}><CircleDot className="h-4 w-4" /> {workspace?.availability.is_available ? 'Disponible · visible sur la carte' : 'Passer disponible'} </button><button type="button" className="agri-expert-sos-button" onClick={() => onNavigate?.('emergency')}><AlertTriangle className="h-4 w-4" /> Déclarer une urgence</button></div></div><div className="agri-role-hero-orb agri-role-hero-orb-expert"><BriefcaseBusiness className="h-7 w-7" /><strong>{workspace?.stats.assigned ?? '—'}</strong><span>dossiers en cours</span></div></header>
+    {error && <div className="agri-expert-error" role="alert"><X className="h-4 w-4" /> {error}</div>}
+    <div className="agri-role-stat-grid"><RoleFeedStat label="À qualifier" value={String(workspace?.stats.queued ?? '—')} detail="demandes ouvertes" tone="green" /><RoleFeedStat label="Dossiers en cours" value={String(workspace?.stats.assigned ?? '—')} detail="votre prise en charge" tone="gold" /><RoleFeedStat label="Réponses cette semaine" value={String(workspace?.stats.responsesWeek ?? '—')} detail="publiées et certifiées" tone="blue" /><RoleFeedStat label="Rémunération" value={workspace?.earnings.configured ? `${workspace.earnings.pendingXof.toLocaleString('fr-FR')} F` : 'À configurer'} detail={workspace?.earnings.configured ? 'en attente de versement' : 'barème administrateur'} tone="violet" /></div>
+    <div className="agri-expert-workbench"><section className="agri-expert-inbox agri-role-work-card"><div className="agri-role-card-head"><div><span>File opérationnelle</span><h2>Demandes à traiter</h2></div><span className="agri-role-live"><i /> {queue.length} dossier{queue.length > 1 ? 's' : ''}</span></div>{queue.length ? queue.map((item) => <button key={item.id} type="button" className={selectedId === item.id ? 'agri-expert-inbox-item agri-expert-inbox-item-active' : 'agri-expert-inbox-item'} onClick={() => void selectCase(item.id)}><span className={`agri-expert-inbox-dot agri-expert-inbox-dot-${item.case_status === 'in_progress' ? 'gold' : item.status === 'answered' ? 'blue' : 'green'}`} /><div><strong>{item.title}</strong><small>{item.producer_name} · {item.category} · {new Date(item.created_at).toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short' })}</small></div><span className="agri-expert-inbox-status">{item.case_status === 'in_progress' ? 'En cours' : item.status === 'answered' ? 'Répondu' : 'Nouveau'}</span><ChevronDown className="h-4 w-4 -rotate-90" /></button>) : <div className="agri-expert-empty"><CheckCircle2 className="h-6 w-6" /><strong>Votre file est vide</strong><span>Les nouvelles demandes apparaîtront ici.</span></div>}</section>
+      <section className="agri-expert-case agri-role-work-card">{caseFile ? <><div className="agri-role-card-head"><div><span>Dossier #{caseFile.id} · {caseFile.category}</span><h2>{caseFile.title}</h2><p className="agri-expert-case-meta"><UserRound className="h-3.5 w-3.5" /> {caseFile.producer_name} · reçu le {new Date(caseFile.created_at).toLocaleString('fr-FR')}</p></div><span className={`agri-expert-status agri-expert-status-${caseFile.case_status ?? 'queued'}`}>{caseFile.case_status === 'in_progress' ? 'En cours' : caseFile.case_status === 'waiting_producer' ? 'En attente producteur' : caseFile.case_status === 'answered' ? 'Répondu' : caseFile.case_status === 'closed' ? 'Clôturé' : 'À prendre'}</span></div><div className="agri-expert-case-body"><div><span className="agri-expert-label">Description terrain</span><p>{caseFile.body}</p>{producerVoice && <div className="agri-expert-attachment"><Mic className="h-4 w-4" /><span>Note vocale du producteur</span><audio controls preload="metadata" src={mediaUrl(producerVoice.id)} /></div>}</div>{photo ? <div className="agri-expert-photo-panel"><div className="agri-expert-photo-frame"><img src={mediaUrl(photo.id)} alt={`Photo du dossier ${caseFile.title}`} /><div className="agri-expert-photo-badges"><span><Camera className="h-3.5 w-3.5" /> HD sécurisé</span><span>{annotationCount} annotation{annotationCount > 1 ? 's' : ''}</span></div>{caseFile.annotations.map((item) => <span key={item.id} className="agri-expert-annotation-mark" title={`${item.label} · ${item.note}`} style={{ left: `${item.x}%`, top: `${item.y}%`, width: `${item.width}%`, height: `${item.height}%` }} />)}</div></div> : <div className="agri-expert-no-photo"><ImagePlus className="h-6 w-6" /><span>Aucune photo jointe à ce dossier</span></div>}</div><div className="agri-expert-case-actions"><button type="button" className="agri-expert-primary-action" onClick={() => void performAction({ action: 'accept' })} disabled={Boolean(caseFile.expert_user_id) || busy !== ''}><Check className="h-4 w-4" /> Prendre en charge</button><button type="button" className="agri-expert-secondary-action" onClick={() => void performAction({ action: 'status', status: 'closed' })} disabled={busy !== ''}><CheckCircle2 className="h-4 w-4" /> Clôturer</button><select aria-label="Changer le statut" value={caseFile.case_status ?? 'queued'} onChange={(event) => void performAction({ action: 'status', status: event.target.value as 'in_progress' | 'waiting_producer' | 'answered' | 'closed' })}><option value="in_progress">En cours</option><option value="waiting_producer">En attente producteur</option><option value="answered">Répondu</option><option value="closed">Clôturé</option></select></div><div className="agri-expert-response-box"><div className="agri-expert-label-row"><span className="agri-expert-label">Votre réponse certifiée</span><span>{draft.length}/10 000</span></div><textarea value={draft} onChange={(event) => setDraft(event.target.value)} placeholder="Expliquez les observations, les gestes immédiats et la prochaine étape…" /><div className="agri-expert-response-tools"><AudioRecorder onRecordingChange={setVoice} /><button type="button" className="agri-expert-send" onClick={() => void reply()} disabled={busy !== '' || (!draft.trim() && !voice)}>{busy === 'reply' ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />} Envoyer la réponse</button></div></div><div className="agri-expert-followup-grid"><div><span className="agri-expert-label">Demander une information</span><textarea value={infoDraft} onChange={(event) => setInfoDraft(event.target.value)} placeholder="Ex. Pouvez-vous préciser la date d’apparition ?" /><button type="button" className="agri-role-card-link" disabled={!infoDraft.trim() || busy !== ''} onClick={() => void performAction({ action: 'request-info', body: infoDraft })}>Demander au producteur <ArrowRight className="h-4 w-4" /></button></div><div><span className="agri-expert-label">Annoter la photo</span><div className="agri-expert-inline-fields"><input value={annotation.label} onChange={(event) => setAnnotation((current) => ({ ...current, label: event.target.value }))} placeholder="Label : tache, lésion…" /><input value={annotation.note} onChange={(event) => setAnnotation((current) => ({ ...current, note: event.target.value }))} placeholder="Note d’observation" /></div><button type="button" className="agri-role-card-link" disabled={!photo || !annotation.label || busy !== ''} onClick={() => void performAction({ action: 'annotate', mediaAssetId: photo?.id, ...annotation })}><ImagePlus className="h-4 w-4" /> Enregistrer l’annotation</button></div></div><div className="agri-expert-transfer"><span className="agri-expert-label"><Settings2 className="h-4 w-4" /> Transférer le dossier</span><select value={transferTo} onChange={(event) => setTransferTo(event.target.value)}><option value="">Choisir un expert disponible</option>{colleagues.map((colleague) => <option key={colleague.id} value={colleague.id}>{colleague.name}{colleague.is_available ? ' · disponible' : ''}</option>)}</select><button type="button" className="agri-role-card-link" disabled={!transferTo || busy !== ''} onClick={() => void performAction({ action: 'transfer', targetExpertId: Number(transferTo) })}>Transférer <ArrowRight className="h-4 w-4" /></button></div></> : <div className="agri-expert-empty agri-expert-empty-large"><FileText className="h-9 w-9" /><strong>Sélectionnez un dossier</strong><span>La fiche complète du producteur apparaîtra ici.</span></div>}</section></div>
+    <section className="agri-expert-history agri-role-work-card"><div className="agri-role-card-head"><div><span>Traçabilité métier</span><h2>Historique du dossier</h2></div><span className="agri-expert-history-note"><MapPin className="h-4 w-4" /> Les événements sont conservés dans D1</span></div>{caseFile?.events.length ? <div className="agri-expert-timeline">{caseFile.events.map((event) => <div key={event.id}><span /><div><strong>{event.action === 'accepted' ? 'Dossier accepté' : event.action === 'replied' ? 'Réponse envoyée' : event.action === 'annotated' ? 'Photo annotée' : event.action === 'transferred' ? 'Dossier transféré' : event.action === 'requested_info' ? 'Information demandée' : 'Statut mis à jour'}</strong><small>{event.actor_name ?? 'Vous'} · {new Date(event.created_at).toLocaleString('fr-FR')}</small></div></div>)}</div> : <p className="agri-expert-empty-line">Les actions du dossier apparaîtront ici.</p>}</section>
+  </motion.div>;
 }
 
 function ExpertFeedWorkspace({ onBack }: { onBack: () => void }) {

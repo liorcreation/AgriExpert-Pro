@@ -75,7 +75,7 @@ export type PersistedQuestion = {
   answer_count?: number;
   useful_count?: number;
   diagnosis_id?: number | null;
-  answer?: { id: number; body: string; language: 'fr' | 'mo'; certified: number; created_at: string; expert_name: string; expert_role?: string; expert_profile?: string } | null;
+  answer?: { id: number; body: string; language: 'fr' | 'mo'; certified: number; voice_asset_id?: number | null; created_at: string; expert_name: string; expert_role?: string; expert_profile?: string } | null;
 };
 
 export function listQuestions() {
@@ -181,6 +181,38 @@ export function createBillingCheckout(code: 'pro' | 'institution', idempotencyKe
 
 export function cancelBillingSubscription() {
   return request<{ data: { cancelledAtPeriodEnd: boolean; currentPeriodEnd?: string | null } }>('/billing', { method: 'POST', body: JSON.stringify({ action: 'cancel-subscription' }) });
+}
+
+export type ExpertWorkspaceData = {
+  queue: Array<{ id: number; category: string; title: string; body: string; language: 'fr' | 'mo'; has_voice: number; has_photo: number; photo_name?: string | null; status: string; created_at: string; producer_name: string; producer_profile?: string | null; assigned_expert_user_id?: number | null; case_status?: string | null; case_updated_at?: string | null; photo_asset_id?: number | null; voice_asset_id?: number | null; answer_count: number }>;
+  stats: { queued: number; assigned: number; responsesWeek: number; averageResponseMinutes: number | null };
+  availability: { user_id: number; is_available: number; latitude?: number | null; longitude?: number | null; radius_km: number; last_seen_at?: string | null };
+  earnings: { pendingXof: number; paidXof: number; entries: number; configured: boolean };
+};
+
+export type ExpertCase = {
+  id: number; category: string; title: string; body: string; language: 'fr' | 'mo'; has_voice: number; has_photo: number; photo_name?: string | null; status: string; created_at: string; producer_name: string; producer_profile?: string | null; expert_user_id?: number | null; case_status?: string | null; accepted_at?: string | null; completed_at?: string | null; updated_at?: string | null;
+  media: Array<{ id: number; kind: 'photo' | 'voice'; file_name?: string | null; mime_type: string; size_bytes: number }>;
+  answers: Array<{ id: number; body: string; language: 'fr' | 'mo'; certified: number; voice_asset_id?: number | null; created_at: string; author_name: string; author_role: string; author_profile?: string | null }>;
+  messages: Array<{ id: number; kind: string; body: string; created_at: string; author_name: string }>;
+  annotations: Array<{ id: number; media_asset_id: number; label: string; note: string; x: number; y: number; width: number; height: number; created_at: string; expert_name: string }>;
+  events: Array<{ id: number; action: string; details_json: string; created_at: string; actor_name?: string | null }>;
+};
+
+export function getExpertWorkspace() {
+  return request<{ data: ExpertWorkspaceData }>('/expert/workspace');
+}
+
+export function getExpertCase(questionId: number) {
+  return request<{ data: ExpertCase }>(`/expert/cases?questionId=${encodeURIComponent(questionId)}`);
+}
+
+export function updateExpertCase(questionId: number, input: { action: 'accept' | 'reply' | 'request-info' | 'annotate' | 'status' | 'transfer'; body?: string; language?: 'fr' | 'mo'; voiceAssetId?: number; mediaAssetId?: number; label?: string; note?: string; x?: number; y?: number; width?: number; height?: number; status?: 'in_progress' | 'waiting_producer' | 'answered' | 'closed'; targetExpertId?: number }) {
+  return request<{ data: ExpertCase }>(`/expert/cases?questionId=${encodeURIComponent(questionId)}`, { method: 'POST', body: JSON.stringify(input) });
+}
+
+export function listExpertColleagues() {
+  return request<{ data: Array<{ id: number; name: string; profile?: string | null; is_available: number; last_seen_at?: string | null }> }>('/expert/experts');
 }
 
 export type InstitutionalDashboardData = {

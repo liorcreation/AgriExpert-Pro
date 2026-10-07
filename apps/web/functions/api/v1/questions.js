@@ -29,7 +29,7 @@ export async function onRequest(context) {
     ]);
     const questionIds = rows.results.map((question) => question.id);
     const answers = questionIds.length
-      ? await env.DB.prepare(`SELECT a.id, a.question_id, a.body, a.language, a.certified, a.created_at, u.name AS expert_name, u.profile AS expert_profile
+      ? await env.DB.prepare(`SELECT a.id, a.question_id, a.body, a.language, a.certified, a.voice_asset_id, a.created_at, u.name AS expert_name, u.profile AS expert_profile
           FROM question_answers a JOIN users u ON u.id = a.author_user_id
           WHERE a.question_id IN (${questionIds.map(() => '?').join(',')}) ORDER BY a.created_at ASC`).bind(...questionIds).all()
       : { results: [] };
