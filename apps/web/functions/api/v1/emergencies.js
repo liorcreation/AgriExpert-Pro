@@ -1,4 +1,5 @@
 import { currentUser, invalid, json, options } from '../../_shared/auth.js';
+import { assignNextExpert, availableExperts, expireAndEscalate, publicExpert } from '../../_shared/emergencies.js';
 
 const kinds = new Set(['veterinary', 'phytosanitary', 'livestock_epidemic', 'pest_attack', 'water_quality']);
 const priorities = new Set(['medium', 'high', 'critical']);
@@ -11,9 +12,21 @@ export async function onRequest(context) {
   if (request.method === 'GET') {
     const url = new URL(request.url);
     const limit = Math.max(1, Math.min(50, Number(url.searchParams.get('limit') ?? 10)));
-    const rows = await env.DB.prepare(`SELECT id, reference, kind, title, description, priority, latitude, longitude, status, created_at
-      FROM emergencies WHERE author_user_id = ? ORDER BY id DESC LIMIT ?`).bind(user.id, limit).all();
-    return json(request, env, { data: rows.results });
+    const ownerClause = user.role === 'expert' ? 'e.assigned_expert_user_id = ? AND e.status IN (\'assigned\', \'open\')' : 'e.author_user_id = ?';
+    const rows = await env.DB.prepare(`SELECT e.id, e.reference, e.author_user_id, e.kind, e.title, e.description, e.priority, e.latitude, e.longitude, e.status, e.assigned_expert_user_id, e.assigned_at, e.acknowledged_at, e.sla_due_at, e.escalation_count, e.created_at,
+        author.name AS author_name, u.name AS assigned_expert_name, u.profile AS assigned_expert_profile,
+        ea.status AS assignment_status, ea.distance_km AS assignment_distance_km, ea.expires_at AS assignment_expires_at
+      FROM emergencies e JOIN users author ON author.id = e.author_user_id LEFT JOIN users u ON u.id = e.assigned_expert_user_id
+      LEFT JOIN emergency_assignments ea ON ea.id = (SELECT current.id FROM emergency_assignments current WHERE current.emergency_id = e.id ORDER BY current.id DESC LIMIT 1)
+      WHERE ${ownerClause} ORDER BY e.id DESC LIMIT ?`).bind(user.id, limit).all();
+    for (const emergency of rows.results) await expireAndEscalate(env.DB, emergency);
+    const refreshed = await env.DB.prepare(`SELECT e.id, e.reference, e.author_user_id, e.kind, e.title, e.description, e.priority, e.latitude, e.longitude, e.status, e.assigned_expert_user_id, e.assigned_at, e.acknowledged_at, e.sla_due_at, e.escalation_count, e.created_at,
+        author.name AS author_name, u.name AS assigned_expert_name, u.profile AS assigned_expert_profile,
+        ea.status AS assignment_status, ea.distance_km AS assignment_distance_km, ea.expires_at AS assignment_expires_at
+      FROM emergencies e JOIN users author ON author.id = e.author_user_id LEFT JOIN users u ON u.id = e.assigned_expert_user_id
+      LEFT JOIN emergency_assignments ea ON ea.id = (SELECT current.id FROM emergency_assignments current WHERE current.emergency_id = e.id ORDER BY current.id DESC LIMIT 1)
+      WHERE ${ownerClause} ORDER BY e.id DESC LIMIT ?`).bind(user.id, limit).all();
+    return json(request, env, { data: refreshed.results.map((item) => ({ ...item, assignment_distance_km: item.assignment_distance_km == null ? null : Number(item.assignment_distance_km) })) });
   }
   if (request.method !== 'POST') return json(request, env, invalid('Méthode non autorisée.'), 405);
   let input = {};
@@ -38,5 +51,10 @@ export async function onRequest(context) {
     await env.DB.prepare(`UPDATE media_assets SET emergency_id = ? WHERE owner_user_id = ? AND id IN (${attachmentIds.map(() => '?').join(',')})`)
       .bind(result.id, user.id, ...attachmentIds).run();
   }
-  return json(request, env, { data: result }, 201);
+  const assignment = await assignNextExpert(env.DB, result);
+  if (!assignment && env.EMERGENCY_FALLBACK_WEBHOOK_URL) {
+    const fallbackPayload = JSON.stringify({ type: 'emergency_unassigned', emergency: result, reason: 'Aucun expert disponible dans le rayon configuré.' });
+    context.waitUntil(fetch(env.EMERGENCY_FALLBACK_WEBHOOK_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: fallbackPayload }).catch(() => undefined));
+  }
+  return json(request, env, { data: { ...result, assignment, assignment_status: assignment ? assignment.status : 'unassigned', fallback_available: Boolean(env.EMERGENCY_FALLBACK_WEBHOOK_URL || env.EMERGENCY_FALLBACK_PHONE) } }, 201);
 }
