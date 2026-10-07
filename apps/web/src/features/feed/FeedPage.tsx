@@ -24,6 +24,7 @@ function mapPersistedQuestion(question: PersistedQuestion): FeedQuestion {
     hasPhoto: Boolean(question.has_photo),
     photoName: question.photo_name ?? undefined,
     photoUrl: question.photo_asset_id ? mediaUrl(question.photo_asset_id) : undefined,
+    voiceUrl: question.voice_asset_id ? mediaUrl(question.voice_asset_id) : undefined,
     answerCount: question.answer_count ?? 0,
     usefulCount: question.useful_count ?? 0,
     answer: question.answer ? {

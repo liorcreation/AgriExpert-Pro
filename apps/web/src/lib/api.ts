@@ -70,6 +70,7 @@ export type PersistedQuestion = {
   has_photo: number;
   photo_name?: string | null;
   photo_asset_id?: number | null;
+  voice_asset_id?: number | null;
   status?: 'open' | 'answered' | 'closed';
   answer_count?: number;
   useful_count?: number;
