@@ -156,3 +156,21 @@ export function getPreferences() {
 export function savePreferences(input: { language: 'fr' | 'mo'; voiceEnabled: boolean; darkMode: boolean }) {
   return request<{ data: { language: 'fr' | 'mo'; voice_enabled: number; dark_mode: number } }>('/preferences', { method: 'PUT', body: JSON.stringify(input) });
 }
+
+export type BillingOverview = {
+  currentPlan: 'free' | 'pro' | 'institution';
+  subscription: { id: number; plan_code: string; status: string; current_period_start?: string | null; current_period_end?: string | null; cancel_at_period_end: number; cancelled_at?: string | null } | null;
+  payments: Array<{ id: number; plan_code: string; amount_xof: number; status: string; provider: string; paid_at?: string | null; created_at: string }>;
+  isAdmin: boolean;
+  checkoutConfigured: boolean;
+  storageReady?: boolean;
+  plans: Array<{ code: string; name: string; amount_xof?: number | null; billing_interval: string; sales_enabled: boolean; features: string[]; quotas: Record<string, number> }>;
+};
+
+export function getBillingOverview() {
+  return request<{ data: BillingOverview }>('/billing');
+}
+
+export function configureBillingPlan(input: { code: 'pro' | 'institution'; amountXof: number | ''; interval: 'month' | 'year' | 'contract'; salesEnabled: boolean; features: string[]; quotas: Record<string, number> }) {
+  return request<{ data: { saved: boolean } }>('/billing', { method: 'POST', body: JSON.stringify({ action: 'configure-plan', ...input }) });
+}

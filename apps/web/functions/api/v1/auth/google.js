@@ -12,7 +12,8 @@ export async function onRequest(context) {
     let user = await env.DB.prepare('SELECT id, name, email, phone, role, profile, plan FROM users WHERE email = ?').bind(email).first();
     if (!user) {
       const role = ['producer', 'expert', 'institution'].includes(input.role) ? input.role : 'producer';
-      const plan = role === 'institution' ? 'institution' : ['free', 'pro'].includes(input.plan) ? input.plan : 'free';
+      // Never grant paid entitlements from client-supplied OAuth profile data.
+      const plan = role === 'institution' ? 'institution' : 'free';
       const profile = typeof input.profile === 'string' ? input.profile.slice(0, 80) : role === 'producer' ? 'farmer' : role === 'expert' ? 'agronomist' : null;
       user = await env.DB.prepare(`INSERT INTO users (name, email, password_hash, role, profile, plan)
         VALUES (?, ?, ?, ?, ?, ?)

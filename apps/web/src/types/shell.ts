@@ -14,4 +14,5 @@ export type NavigationKey =
   | 'emergency'
   | 'guides'
   | 'directory'
-  | 'institutional';
+  | 'institutional'
+  | 'billing';

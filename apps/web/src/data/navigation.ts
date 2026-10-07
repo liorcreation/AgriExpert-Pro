@@ -4,6 +4,7 @@ import {
   BookOpen,
   Building2,
   Compass,
+  CreditCard,
   LayoutDashboard,
   MapPinned,
   Siren,
@@ -52,6 +53,7 @@ export const primaryNavigation: NavigationItem[] = [
     description: 'Spécialistes et laboratoires proches',
     icon: Compass,
   },
+  { key: 'billing', label: 'Offres & facturation', description: 'Votre formule et vos paiements', icon: CreditCard },
 ];
 
 export const institutionalNavigation: NavigationItem[] = [
@@ -69,6 +71,7 @@ const expertNavigation: NavigationItem[] = [
   { key: 'emergency', label: 'Interventions SOS', description: 'Urgences proches à accompagner', icon: Siren, badge: '4' },
   { key: 'guides', label: 'Base technique', description: 'Référentiels et itinéraires validés', icon: BookOpen },
   { key: 'directory', label: 'Réseau d’experts', description: 'Spécialistes et relais terrain', icon: Compass },
+  { key: 'billing', label: 'Offres & facturation', description: 'Votre formule et vos paiements', icon: CreditCard },
 ];
 
 const institutionNavigation: NavigationItem[] = [
@@ -77,6 +80,7 @@ const institutionNavigation: NavigationItem[] = [
   { key: 'emergency', label: 'Veille sanitaire', description: 'Foyers et urgences prioritaires', icon: Siren, badge: '67' },
   { key: 'directory', label: 'Réseau mobilisable', description: 'Experts et laboratoires disponibles', icon: Compass },
   { key: 'guides', label: 'Référentiels nationaux', description: 'Fiches et protocoles de campagne', icon: BookOpen },
+  { key: 'billing', label: 'Contrats & facturation', description: 'Offres institutionnelles', icon: CreditCard },
 ];
 
 export const roleNavigation: Record<UserRole, NavigationItem[]> = { producer: primaryNavigation, expert: expertNavigation, institution: institutionNavigation };
