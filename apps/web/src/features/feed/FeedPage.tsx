@@ -6,7 +6,7 @@ import { QuestionCard } from '../../components/feed/QuestionCard';
 import { QuestionComposer } from '../../components/feed/QuestionComposer';
 import type { FeedCategory, FeedQuestion } from '../../types/feed';
 import type { UserRole } from '../../types/shell';
-import { getOfflineDrafts, queueOfflineDraft, removeOfflineDraft, syncOfflineDrafts } from '../../lib/offlineQueue';
+import { countPendingOfflineDrafts, queueOfflineDraft, syncOfflineDrafts } from '../../lib/offlineQueue';
 import { answerQuestion, isApiConfigured, listQuestions, publishQuestion, reactToQuestion, uploadMedia, type PersistedQuestion } from '../../lib/api';
 
 type FeedFilter = 'all' | FeedCategory;
@@ -53,7 +53,13 @@ export function FeedPage({ role, onBack }: { role: UserRole; onBack: () => void 
   const [composerOpen, setComposerOpen] = useState(false);
   const [sortByAnswers, setSortByAnswers] = useState(false);
   const [isOnline, setIsOnline] = useState(() => typeof navigator === 'undefined' ? true : navigator.onLine);
-  const [offlineCount, setOfflineCount] = useState(() => getOfflineDrafts().filter((draft) => draft.status === 'queued').length);
+  const [offlineCount, setOfflineCount] = useState(0);
+
+  async function refreshOfflineCount() {
+    setOfflineCount(await countPendingOfflineDrafts());
+  }
+
+  useEffect(() => { void refreshOfflineCount(); }, []);
 
   useEffect(() => {
     if (!isApiConfigured) return;
@@ -63,18 +69,12 @@ export function FeedPage({ role, onBack }: { role: UserRole; onBack: () => void 
   useEffect(() => {
     const handleOnline = () => {
       setIsOnline(true);
-      const queued = getOfflineDrafts().filter((draft) => draft.status === 'queued');
-      if (!isApiConfigured) {
-        const synced = syncOfflineDrafts();
-        setOfflineCount(synced.length ? 0 : queued.length);
-        return;
-      }
-      void Promise.allSettled(queued.map((draft) => publishQuestion(draft).then(() => removeOfflineDraft(draft.id))))
-        .finally(() => setOfflineCount(getOfflineDrafts().filter((draft) => draft.status === 'queued').length));
+      void syncOfflineDrafts().then(() => refreshOfflineCount());
     };
     const handleOffline = () => setIsOnline(false);
-    window.addEventListener('online', handleOnline); window.addEventListener('offline', handleOffline);
-    return () => { window.removeEventListener('online', handleOnline); window.removeEventListener('offline', handleOffline); };
+    const handleBackgroundSync = () => { void syncOfflineDrafts().then(() => refreshOfflineCount()); };
+    window.addEventListener('online', handleOnline); window.addEventListener('offline', handleOffline); window.addEventListener('agriexpert:offline-sync', handleBackgroundSync);
+    return () => { window.removeEventListener('online', handleOnline); window.removeEventListener('offline', handleOffline); window.removeEventListener('agriexpert:offline-sync', handleBackgroundSync); };
   }, []);
 
   const visibleQuestions = useMemo(() => {
@@ -105,8 +105,8 @@ export function FeedPage({ role, onBack }: { role: UserRole; onBack: () => void 
     }
     const newQuestion: FeedQuestion = { id: `question-${Date.now()}`, title: payload.title, body: payload.body, category: payload.category, hasVoice: payload.hasVoice, hasPhoto: payload.hasPhoto, photoName: payload.photoName, photoPreview: payload.photoPreview, authorName: 'Vous', authorLocation: 'Votre exploitation', createdAt: 'À l’instant', answerCount: 0 };
     setQuestions((current) => [newQuestion, ...current]);
-    queueOfflineDraft(payload);
-    setOfflineCount((current) => current + 1);
+    await queueOfflineDraft({ title: payload.title, body: payload.body, category: payload.category, hasVoice: payload.hasVoice, hasPhoto: payload.hasPhoto, photo: payload.photo, voice: payload.voice, photoName: payload.photoName, voiceName: 'question.webm' });
+    await refreshOfflineCount();
     setComposerOpen(false);
   }
 

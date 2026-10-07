@@ -1,8 +1,16 @@
-const CACHE_NAME = 'agriexpert-shell-v3';
+const CACHE_NAME = 'agriexpert-shell-v4';
 const APP_SHELL = ['/', '/index.html', '/manifest.webmanifest', '/sw.js', '/brand/app-icon.svg', '/brand/app-icon-32.png', '/brand/app-icon-180.png', '/brand/app-icon-192.png', '/brand/app-icon-512.png'];
 
 self.addEventListener('install', (event) => {
-  event.waitUntil(caches.open(CACHE_NAME).then((cache) => cache.addAll(APP_SHELL)));
+  event.waitUntil((async () => {
+    const cache = await caches.open(CACHE_NAME);
+    let files = APP_SHELL;
+    try {
+      const response = await fetch('/precache-manifest.json', { cache: 'no-store' });
+      if (response.ok) files = await response.json();
+    } catch { /* Keep the minimal shell as a safe fallback. */ }
+    await cache.addAll([...new Set([...files, '/precache-manifest.json'])]);
+  })());
   self.skipWaiting();
 });
 
@@ -14,7 +22,11 @@ self.addEventListener('activate', (event) => {
 });
 
 self.addEventListener('sync', (event) => {
-  if (event.tag === 'agriexpert-sync') event.waitUntil(Promise.resolve());
+  if (event.tag !== 'agriexpert-sync') return;
+  event.waitUntil((async () => {
+    const clients = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+    await Promise.all(clients.map((client) => client.postMessage({ type: 'AGRIEXPERT_SYNC_REQUESTED' })));
+  })());
 });
 
 self.addEventListener('message', (event) => {

@@ -34,12 +34,14 @@ CREATE TABLE IF NOT EXISTS questions (
   has_voice INTEGER NOT NULL DEFAULT 0,
   has_photo INTEGER NOT NULL DEFAULT 0,
   photo_name TEXT,
+  client_request_id TEXT,
   status TEXT NOT NULL DEFAULT 'open' CHECK (status IN ('open', 'answered', 'closed')),
   created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE INDEX IF NOT EXISTS questions_category_created_index ON questions(category, created_at DESC);
 CREATE INDEX IF NOT EXISTS questions_author_created_index ON questions(author_user_id, created_at DESC);
+CREATE UNIQUE INDEX IF NOT EXISTS questions_author_client_request_index ON questions(author_user_id, client_request_id) WHERE client_request_id IS NOT NULL;
 
 CREATE TABLE IF NOT EXISTS emergencies (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -89,12 +91,14 @@ CREATE TABLE IF NOT EXISTS media_assets (
   file_name TEXT,
   mime_type TEXT NOT NULL,
   size_bytes INTEGER NOT NULL,
+  client_request_id TEXT,
   created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
   CHECK ((question_id IS NOT NULL AND emergency_id IS NULL) OR (question_id IS NULL AND emergency_id IS NOT NULL) OR (question_id IS NULL AND emergency_id IS NULL)
 ));
 
 CREATE INDEX IF NOT EXISTS media_assets_question_index ON media_assets(question_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS media_assets_emergency_index ON media_assets(emergency_id, created_at DESC);
+CREATE UNIQUE INDEX IF NOT EXISTS media_assets_owner_client_request_index ON media_assets(owner_user_id, client_request_id) WHERE client_request_id IS NOT NULL;
 
 CREATE TABLE IF NOT EXISTS emergency_events (
   id INTEGER PRIMARY KEY AUTOINCREMENT,

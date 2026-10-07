@@ -13,5 +13,11 @@ createRoot(document.getElementById('root')!).render(
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('/sw.js').catch(() => undefined);
+    void import('./lib/offlineQueue').then(({ syncOfflineDrafts }) => syncOfflineDrafts()).catch(() => undefined);
+  });
+  navigator.serviceWorker.addEventListener('message', (event) => {
+    if (event.data?.type !== 'AGRIEXPERT_SYNC_REQUESTED') return;
+    window.dispatchEvent(new Event('agriexpert:offline-sync'));
+    void import('./lib/offlineQueue').then(({ syncOfflineDrafts }) => syncOfflineDrafts()).catch(() => undefined);
   });
 }

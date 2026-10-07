@@ -82,10 +82,11 @@ export function listQuestions() {
 
 export type UploadedMedia = { id: number; kind: 'photo' | 'voice'; file_name?: string; mime_type: string; size_bytes: number };
 
-export async function uploadMedia(file: Blob, kind: 'photo' | 'voice', fileName = 'terrain-media') {
+export async function uploadMedia(file: Blob, kind: 'photo' | 'voice', fileName = 'terrain-media', clientRequestId?: string) {
   const form = new FormData();
   form.append('file', file, fileName);
   form.append('kind', kind);
+  if (clientRequestId) form.append('client_request_id', clientRequestId);
   return request<{ data: UploadedMedia }>('/media', { method: 'POST', body: form, headers: { Accept: 'application/json' } });
 }
 
@@ -101,7 +102,7 @@ export function analyzePhoto(mediaId: number, category: string, context: string)
   return request<{ data: PhotoDiagnosis }>('/diagnostics', { method: 'POST', body: JSON.stringify({ mediaId, category, context }) });
 }
 
-export function publishQuestion(input: { title: string; body: string; category: string; hasVoice?: boolean; hasPhoto?: boolean; photoName?: string; attachmentIds?: number[]; diagnosisId?: number }) {
+export function publishQuestion(input: { title: string; body: string; category: string; hasVoice?: boolean; hasPhoto?: boolean; photoName?: string; attachmentIds?: number[]; diagnosisId?: number; clientRequestId?: string }) {
   return request<{ data: PersistedQuestion }>('/questions', { method: 'POST', body: JSON.stringify(input) });
 }
 
