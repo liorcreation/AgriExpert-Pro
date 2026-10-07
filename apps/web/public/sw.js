@@ -1,4 +1,4 @@
-const CACHE_NAME = 'agriexpert-shell-v4';
+const CACHE_NAME = 'agriexpert-shell-v5';
 const APP_SHELL = ['/', '/index.html', '/manifest.webmanifest', '/sw.js', '/brand/app-icon.svg', '/brand/app-icon-32.png', '/brand/app-icon-180.png', '/brand/app-icon-192.png', '/brand/app-icon-512.png'];
 
 self.addEventListener('install', (event) => {

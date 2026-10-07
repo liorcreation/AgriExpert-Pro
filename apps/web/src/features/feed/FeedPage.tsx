@@ -61,20 +61,35 @@ export function FeedPage({ role, onBack }: { role: UserRole; onBack: () => void 
     setOfflineCount(await countPendingOfflineDrafts());
   }
 
+  async function refreshQuestions() {
+    if (!isApiConfigured) return;
+    try {
+      const response = await listQuestions();
+      setQuestions(response.data.map(mapPersistedQuestion));
+    } catch {
+      // Keep the current feed visible when a transient network error occurs.
+    }
+  }
+
   useEffect(() => { void refreshOfflineCount(); }, []);
 
   useEffect(() => {
     if (!isApiConfigured) return;
-    listQuestions().then((response) => setQuestions(response.data.map(mapPersistedQuestion))).catch(() => undefined);
+    void refreshQuestions();
   }, []);
 
   useEffect(() => {
-    const handleOnline = () => {
+    const handleOnline = async () => {
       setIsOnline(true);
-      void syncOfflineDrafts().then(() => refreshOfflineCount());
+      await syncOfflineDrafts();
+      await Promise.all([refreshOfflineCount(), refreshQuestions()]);
     };
     const handleOffline = () => setIsOnline(false);
-    const handleBackgroundSync = () => { void syncOfflineDrafts().then(() => refreshOfflineCount()); };
+    const handleBackgroundSync = () => {
+      void syncOfflineDrafts().then(async () => {
+        await Promise.all([refreshOfflineCount(), refreshQuestions()]);
+      });
+    };
     window.addEventListener('online', handleOnline); window.addEventListener('offline', handleOffline); window.addEventListener('agriexpert:offline-sync', handleBackgroundSync);
     return () => { window.removeEventListener('online', handleOnline); window.removeEventListener('offline', handleOffline); window.removeEventListener('agriexpert:offline-sync', handleBackgroundSync); };
   }, []);
