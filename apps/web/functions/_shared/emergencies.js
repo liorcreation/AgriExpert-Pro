@@ -64,6 +64,53 @@ export async function expireAndEscalate(db, emergency) {
   return assignNextExpert(db, emergency, active.results.map((item) => item.expert_user_id));
 }
 
+export async function dispatchEmergencyFallback(db, env, emergency, reason = 'unassigned') {
+  const webhook = String(env.EMERGENCY_FALLBACK_WEBHOOK_URL ?? '').trim();
+  if (!webhook) return { status: 'not_configured', channel: null };
+  const idempotencyKey = `emergency:${emergency.id}:${reason}:${Number(emergency.escalation_count ?? 0)}`;
+  const existing = await db.prepare('SELECT id, status FROM emergency_notifications WHERE idempotency_key = ?').bind(idempotencyKey).first();
+  if (existing?.status === 'sent') return { status: 'sent', channel: 'webhook' };
+  let notification;
+  if (existing) {
+    notification = existing;
+    await db.prepare("UPDATE emergency_notifications SET status = 'queued', attempt_count = attempt_count + 1, error_message = NULL WHERE id = ?").bind(existing.id).run();
+  } else {
+    notification = await db.prepare(`INSERT INTO emergency_notifications (emergency_id, channel, target, idempotency_key, attempt_count)
+      VALUES (?, 'webhook', ?, ?, 1) RETURNING id`).bind(emergency.id, webhook, idempotencyKey).first();
+  }
+  const payload = { type: 'emergency_fallback', reason, emergency: { id: emergency.id, reference: emergency.reference, kind: emergency.kind, title: emergency.title, priority: emergency.priority, latitude: emergency.latitude, longitude: emergency.longitude, escalation_count: Number(emergency.escalation_count ?? 0) } };
+  try {
+    const response = await fetch(webhook, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-AgriExpert-Event': 'emergency-fallback', 'X-AgriExpert-Idempotency-Key': idempotencyKey }, body: JSON.stringify(payload) });
+    if (!response.ok) throw new Error(`Fallback webhook HTTP ${response.status}`);
+    await db.prepare("UPDATE emergency_notifications SET status = 'sent', sent_at = CURRENT_TIMESTAMP, error_message = NULL WHERE id = ?").bind(notification.id).run();
+    return { status: 'sent', channel: 'webhook' };
+  } catch (error) {
+    await db.prepare("UPDATE emergency_notifications SET status = 'failed', error_message = ? WHERE id = ?").bind(String(error?.message ?? 'Notification impossible').slice(0, 500), notification.id).run();
+    return { status: 'failed', channel: 'webhook' };
+  }
+}
+
+export async function reconcileEmergencies(db, env) {
+  const rows = await db.prepare(`SELECT id, reference, kind, title, priority, latitude, longitude, status, escalation_count
+    FROM emergencies WHERE status IN ('open', 'assigned') ORDER BY id ASC LIMIT 100`).all();
+  let processed = 0;
+  let escalated = 0;
+  let notified = 0;
+  for (const emergency of rows.results) {
+    const before = Number(emergency.escalation_count ?? 0);
+    const assignment = await expireAndEscalate(db, emergency);
+    const current = await db.prepare('SELECT escalation_count, status FROM emergencies WHERE id = ?').bind(emergency.id).first();
+    const after = Number(current?.escalation_count ?? before);
+    if (after > before) escalated += after - before;
+    if (!assignment && current?.status === 'open') {
+      const notification = await dispatchEmergencyFallback(db, env, { ...emergency, escalation_count: after }, after > before ? 'escalated_unassigned' : 'unassigned');
+      if (notification.status === 'sent') notified += 1;
+    }
+    processed += 1;
+  }
+  return { processed, escalated, notified };
+}
+
 export function publicExpert(expert) {
   return { id: Number(expert.id ?? expert.expert_user_id), name: expert.name ?? expert.expert_name, specialty: expert.specialty ?? expert.expert_profile ?? 'Expert agropastoral', latitude: Number(expert.latitude), longitude: Number(expert.longitude), distance_km: Number(expert.distance_km), status: expert.status ?? 'available', last_seen_at: expert.last_seen_at };
 }

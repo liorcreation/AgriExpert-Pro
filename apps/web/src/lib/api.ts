@@ -174,3 +174,11 @@ export function getBillingOverview() {
 export function configureBillingPlan(input: { code: 'pro' | 'institution'; amountXof: number | ''; interval: 'month' | 'year' | 'contract'; salesEnabled: boolean; features: string[]; quotas: Record<string, number> }) {
   return request<{ data: { saved: boolean } }>('/billing', { method: 'POST', body: JSON.stringify({ action: 'configure-plan', ...input }) });
 }
+
+export function createBillingCheckout(code: 'pro' | 'institution', idempotencyKey = crypto.randomUUID()) {
+  return request<{ data: { paymentId: number; status: string; checkoutUrl: string } }>('/billing', { method: 'POST', headers: { 'Idempotency-Key': idempotencyKey }, body: JSON.stringify({ action: 'create-checkout', code, idempotencyKey }) });
+}
+
+export function cancelBillingSubscription() {
+  return request<{ data: { cancelledAtPeriodEnd: boolean; currentPeriodEnd?: string | null } }>('/billing', { method: 'POST', body: JSON.stringify({ action: 'cancel-subscription' }) });
+}

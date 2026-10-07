@@ -1,5 +1,5 @@
 import { currentUser, invalid, json, options } from '../../_shared/auth.js';
-import { assignNextExpert, availableExperts, expireAndEscalate, publicExpert } from '../../_shared/emergencies.js';
+import { assignNextExpert, availableExperts, dispatchEmergencyFallback, expireAndEscalate, publicExpert } from '../../_shared/emergencies.js';
 
 const kinds = new Set(['veterinary', 'phytosanitary', 'livestock_epidemic', 'pest_attack', 'water_quality']);
 const priorities = new Set(['medium', 'high', 'critical']);
@@ -52,9 +52,6 @@ export async function onRequest(context) {
       .bind(result.id, user.id, ...attachmentIds).run();
   }
   const assignment = await assignNextExpert(env.DB, result);
-  if (!assignment && env.EMERGENCY_FALLBACK_WEBHOOK_URL) {
-    const fallbackPayload = JSON.stringify({ type: 'emergency_unassigned', emergency: result, reason: 'Aucun expert disponible dans le rayon configuré.' });
-    context.waitUntil(fetch(env.EMERGENCY_FALLBACK_WEBHOOK_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: fallbackPayload }).catch(() => undefined));
-  }
+  if (!assignment) context.waitUntil(dispatchEmergencyFallback(env.DB, env, result, 'unassigned'));
   return json(request, env, { data: { ...result, assignment, assignment_status: assignment ? assignment.status : 'unassigned', fallback_available: Boolean(env.EMERGENCY_FALLBACK_WEBHOOK_URL || env.EMERGENCY_FALLBACK_PHONE) } }, 201);
 }

@@ -158,6 +158,7 @@ body { font-size: 16px; }
 .agri-billing-admin-form .agri-billing-checkbox { display:flex; flex-direction:row; align-items:center; min-height:2.75rem; }
 .agri-billing-admin-form > button { grid-column:1/-1; cursor:pointer; }
 .agri-billing-admin-message { color:#078c61!important; }
+.agri-billing-cancel { margin:0 0 1rem; min-height:2.5rem; padding:0 .9rem; border:1px solid #e3b1a8; border-radius:.7rem; color:#9a392d; background:#fff7f5; font-weight:700; cursor:pointer; }
 .agri-auth-plan-note { display:flex; align-items:flex-start; gap:.45rem; color:#53675b; font-size:.8rem; }
 @media(max-width:850px) { .agri-billing-grid,.agri-billing-trust { grid-template-columns:1fr; }.agri-billing-admin-form { grid-template-columns:1fr 1fr; }.agri-billing-hero { align-items:flex-start; }.agri-billing-hero-mark { display:none; } }
 @media(max-width:560px) { .agri-billing-hero { padding:1.35rem; }.agri-billing-status { align-items:flex-start; }.agri-billing-state { font-size:.65rem; }.agri-billing-table > div { grid-template-columns:1fr auto; }.agri-billing-table small { grid-column:1/-1; }.agri-billing-admin-form { grid-template-columns:1fr; } }
