@@ -104,15 +104,23 @@ body { font-size: 16px; }
 /* Billing foundation — truthful pricing state until commercial settings are approved. */
 .agri-auth-plan-picker { display: none !important; }
 .agri-billing-page { display: grid; gap: 1.25rem; padding-bottom: 3rem; }
-.agri-billing-hero { display:flex; justify-content:space-between; align-items:center; gap:2rem; padding:2rem; border-radius:1.5rem; color:#f7fbf5; background:radial-gradient(circle at 88% 12%,rgba(148,222,104,.22),transparent 18rem),linear-gradient(135deg,#0b3025,#104a38 65%,#0e3c30); }
-.agri-billing-hero > div:first-child { max-width: 700px; }
+.agri-billing-hero { position:relative; isolation:isolate; overflow:hidden; display:flex; justify-content:space-between; align-items:center; gap:2rem; padding:2.35rem; border:1px solid #ffffff18; border-radius:1.65rem; color:#f7fbf5; background:radial-gradient(circle at 88% 12%,rgba(181,237,113,.26),transparent 18rem),linear-gradient(135deg,#082b21,#104a38 65%,#0e3c30); box-shadow:0 24px 70px #0b30251f; }
+.agri-billing-hero::before { content:""; position:absolute; inset:0; z-index:-1; opacity:.22; background-image:linear-gradient(115deg,transparent 0 48%,#b5ed7112 48.2% 48.5%,transparent 48.7%),linear-gradient(25deg,transparent 0 72%,#ffffff0d 72.2% 72.4%,transparent 72.6%); pointer-events:none; }
+.agri-billing-hero-copy { position:relative; max-width:700px; z-index:1; }
 .agri-billing-hero .agri-soft-action { margin-bottom:1.5rem; color:#d7f4de; }
 .agri-billing-hero .agri-section-kicker, .agri-billing-admin .agri-section-kicker { display:block; margin:.25rem 0 .65rem; color:#b5ed71; font-size:.72rem; font-weight:800; letter-spacing:.14em; }
 .agri-billing-hero h1 { margin:0; font-size:clamp(2rem,4vw,3.3rem); line-height:1.05; font-weight:800; letter-spacing:-.04em; }
 .agri-billing-hero p { max-width:620px; margin:.85rem 0 0; color:#d1e0d7; line-height:1.65; }
-.agri-billing-hero-mark { display:grid; justify-items:center; gap:.55rem; min-width:175px; padding:1.4rem; border:1px solid #ffffff2a; border-radius:1.2rem; background:#ffffff12; backdrop-filter:blur(16px); }
+.agri-billing-hero-points { display:flex; flex-wrap:wrap; gap:.7rem 1rem; margin-top:1.35rem; color:#d5f2dc; font-size:.82rem; font-weight:650; }
+.agri-billing-hero-points span { display:inline-flex; align-items:center; gap:.4rem; }
+.agri-billing-hero-points svg { color:#b5ed71; }
+.agri-billing-hero-mark { position:relative; display:grid; justify-items:center; gap:.55rem; min-width:205px; min-height:185px; padding:1.4rem; border:1px solid #ffffff2a; border-radius:1.35rem; background:#ffffff12; backdrop-filter:blur(16px); overflow:hidden; }
+.agri-billing-hero-icon { display:grid; place-items:center; width:4.2rem; height:4.2rem; border:1px solid #b5ed7155; border-radius:1.2rem; color:#b5ed71; background:#b5ed7117; box-shadow:0 0 0 9px #b5ed710b,0 0 45px #b5ed7130; }
 .agri-billing-hero-mark svg { color:#b5ed71; }
 .agri-billing-hero-mark small { color:#c4d4ca; text-align:center; }
+.agri-billing-orbit { position:absolute; border:1px solid #b5ed7126; border-radius:50%; pointer-events:none; }
+.agri-billing-orbit-one { width:12rem; height:12rem; top:-5.2rem; right:-4rem; }
+.agri-billing-orbit-two { width:8rem; height:8rem; bottom:-4rem; left:-2rem; }
 .agri-billing-status, .agri-billing-plan, .agri-billing-trust, .agri-billing-payments, .agri-billing-admin { border:1px solid rgb(var(--ag-border)); border-radius:1.25rem; background:rgb(var(--ag-surface-raised)); box-shadow:0 16px 50px #132a1710; }
 .agri-billing-status { display:flex; align-items:center; gap:1rem; padding:1.2rem 1.35rem; }
 .agri-billing-status-icon { display:grid; place-items:center; width:2.75rem; height:2.75rem; border-radius:.9rem; color:#078c61; background:#e3f5e7; }
@@ -121,9 +129,15 @@ body { font-size: 16px; }
 .agri-billing-status strong { color:rgb(var(--ag-ink)); font-size:1.2rem; }
 .agri-billing-status small { color:rgb(var(--ag-muted)); }
 .agri-billing-state { margin-left:auto; padding:.4rem .75rem; border-radius:999px; color:#087a55!important; background:#e6f7ec; text-transform:capitalize; letter-spacing:0!important; }
+.agri-billing-section-intro { display:flex; align-items:end; justify-content:space-between; gap:1rem; padding:.35rem .15rem 0; }
+.agri-billing-section-intro h2 { margin:.15rem 0 0; color:rgb(var(--ag-ink)); font-size:1.65rem; letter-spacing:-.03em; }
+.agri-billing-section-intro p { max-width:34rem; margin:0; color:rgb(var(--ag-muted)); font-size:.88rem; line-height:1.55; text-align:right; }
 .agri-billing-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:1rem; }
-.agri-billing-plan { padding:1.35rem; transition:transform .2s ease,border-color .2s ease,box-shadow .2s ease; }
-.agri-billing-plan:hover { transform:translateY(-3px); border-color:#6ecb91; box-shadow:0 20px 55px #08794e17; }
+.agri-billing-plan { position:relative; overflow:hidden; padding:1.45rem; transition:border-color .2s ease,box-shadow .2s ease; }
+.agri-billing-plan::before { content:""; position:absolute; inset:0 0 auto; height:4px; background:#d5e6d8; }
+.agri-billing-plan-pro::before { background:linear-gradient(90deg,#b5ed71,#0aa875); }
+.agri-billing-plan-institution::before { background:linear-gradient(90deg,#d4af37,#7c5d18); }
+.agri-billing-plan:hover { border-color:#6ecb91; box-shadow:0 20px 55px #08794e17; }
 .agri-billing-plan-current { border-color:#34b879; box-shadow:0 0 0 3px #34b87919; }
 .agri-billing-plan-head { display:flex; justify-content:space-between; align-items:center; margin-bottom:1.1rem; }
 .agri-billing-plan-icon { display:grid; place-items:center; width:2.6rem; height:2.6rem; border-radius:.85rem; color:#078c61; background:#e4f5e9; }
@@ -139,7 +153,7 @@ body { font-size: 16px; }
 .agri-billing-plan > button:disabled { color:#75867c; background:#edf2ed; cursor:not-allowed; }
 .agri-billing-trust { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:1rem; padding:1.3rem; }
 .agri-billing-trust > div { display:grid; align-content:start; gap:.45rem; }
-.agri-billing-trust svg { color:#0aa875; }
+.agri-billing-trust-icon { display:grid; place-items:center; width:2.35rem; height:2.35rem; border-radius:.75rem; color:#0aa875; background:#e4f5e9; }
 .agri-billing-trust strong { color:rgb(var(--ag-ink)); }
 .agri-billing-trust p, .agri-billing-admin p { margin:0; color:rgb(var(--ag-muted)); line-height:1.55; font-size:.87rem; }
 .agri-billing-payments, .agri-billing-admin { padding:1.3rem; }
@@ -160,7 +174,7 @@ body { font-size: 16px; }
 .agri-billing-admin-message { color:#078c61!important; }
 .agri-billing-cancel { margin:0 0 1rem; min-height:2.5rem; padding:0 .9rem; border:1px solid #e3b1a8; border-radius:.7rem; color:#9a392d; background:#fff7f5; font-weight:700; cursor:pointer; }
 .agri-auth-plan-note { display:flex; align-items:flex-start; gap:.45rem; color:#53675b; font-size:.8rem; }
-@media(max-width:850px) { .agri-billing-grid,.agri-billing-trust { grid-template-columns:1fr; }.agri-billing-admin-form { grid-template-columns:1fr 1fr; }.agri-billing-hero { align-items:flex-start; }.agri-billing-hero-mark { display:none; } }
+@media(max-width:850px) { .agri-billing-grid,.agri-billing-trust { grid-template-columns:1fr; }.agri-billing-admin-form { grid-template-columns:1fr 1fr; }.agri-billing-hero { align-items:flex-start; }.agri-billing-hero-mark { display:none; }.agri-billing-section-intro { align-items:flex-start; flex-direction:column; }.agri-billing-section-intro p { text-align:left; } }
 @media(max-width:560px) { .agri-billing-hero { padding:1.35rem; }.agri-billing-status { align-items:flex-start; }.agri-billing-state { font-size:.65rem; }.agri-billing-table > div { grid-template-columns:1fr auto; }.agri-billing-table small { grid-column:1/-1; }.agri-billing-admin-form { grid-template-columns:1fr; } }
 
 @layer components {
