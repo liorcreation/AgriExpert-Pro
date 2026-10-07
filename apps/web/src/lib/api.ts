@@ -1,6 +1,9 @@
 const API_URL = (import.meta.env.VITE_API_URL as string | undefined)?.replace(/\/$/, '');
 
 export const isApiConfigured = Boolean(API_URL);
+// The paid vision provider stays opt-in. Until explicitly enabled at build time,
+// photos are sent to the human expert workflow without calling OpenAI.
+export const isAiDiagnosisEnabled = String(import.meta.env.VITE_ENABLE_AI_DIAGNOSIS ?? '').toLowerCase() === 'true';
 const GOOGLE_CLIENT_ID = (import.meta.env.VITE_GOOGLE_CLIENT_ID as string | undefined)?.trim() ?? '';
 export const isGoogleConfigured = Boolean(GOOGLE_CLIENT_ID);
 

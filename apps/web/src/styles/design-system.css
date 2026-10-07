@@ -613,6 +613,11 @@ body { font-size: 16px; }
 .ag-feed-diagnosis-action small { margin-top: 3px; color: var(--agri-muted); font-size: .65rem; }
 .ag-feed-diagnosis-action button { display: inline-flex; flex-shrink: 0; align-items: center; gap: 6px; min-height: 32px; border: 0; border-radius: 9px; padding: 0 11px; background: #0f3d2e; color: #fff; font-size: .68rem; font-weight: 800; }
 .ag-feed-diagnosis-action button:disabled { cursor: not-allowed; opacity: .5; }
+.ag-feed-human-review { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 10px; border: 1px solid rgba(16,185,129,.24); border-radius: 12px; padding: 11px 12px; background: rgba(16,185,129,.045); }
+.ag-feed-human-review strong, .ag-feed-human-review small { display: block; }
+.ag-feed-human-review strong { color: var(--agri-ink); font-size: .74rem; }
+.ag-feed-human-review small { margin-top: 3px; color: var(--agri-muted); font-size: .65rem; }
+.ag-feed-human-review > span { display: inline-flex; flex-shrink: 0; align-items: center; gap: 5px; color: #07885e; font-size: .64rem; font-weight: 800; }
 .ag-feed-diagnosis-result { display: grid; gap: 10px; margin-top: 10px; border: 1px solid rgba(212,175,55,.33); border-radius: 13px; padding: 12px; background: linear-gradient(135deg, rgba(212,175,55,.09), rgba(16,185,129,.04)); color: var(--agri-muted); font-size: .72rem; line-height: 1.5; }
 .ag-feed-diagnosis-result-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
 .ag-feed-diagnosis-result-head div { display: grid; gap: 2px; }
