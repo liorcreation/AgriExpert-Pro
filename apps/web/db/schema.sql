@@ -101,6 +101,21 @@ CREATE INDEX IF NOT EXISTS media_assets_question_index ON media_assets(question_
 CREATE INDEX IF NOT EXISTS media_assets_emergency_index ON media_assets(emergency_id, created_at DESC);
 CREATE UNIQUE INDEX IF NOT EXISTS media_assets_owner_client_request_index ON media_assets(owner_user_id, client_request_id) WHERE client_request_id IS NOT NULL;
 
+CREATE TABLE IF NOT EXISTS voice_transcriptions (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  media_asset_id INTEGER NOT NULL UNIQUE REFERENCES media_assets(id) ON DELETE CASCADE,
+  owner_user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  transcript TEXT,
+  language TEXT NOT NULL CHECK (language IN ('fr', 'mo', 'unknown')),
+  provider TEXT NOT NULL,
+  model TEXT NOT NULL,
+  status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'completed', 'failed')),
+  consent_at TEXT NOT NULL,
+  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS voice_transcriptions_owner_created_index ON voice_transcriptions(owner_user_id, created_at DESC);
+
 CREATE TABLE IF NOT EXISTS emergency_events (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   emergency_id INTEGER NOT NULL REFERENCES emergencies(id) ON DELETE CASCADE,

@@ -12,9 +12,10 @@ export type OfflineDraft = {
   hasPhoto: boolean;
   photoName?: string;
   voiceName?: string;
+  voiceTranscript?: string;
+  photoAssetId?: number;
   photoBlob?: Blob;
   voiceBlob?: Blob;
-  photoAssetId?: number;
   voiceAssetId?: number;
   createdAt: string;
   updatedAt: string;
@@ -162,6 +163,9 @@ export type OfflineDraftInput = {
   voice?: Blob;
   photoName?: string;
   voiceName?: string;
+  voiceTranscript?: string;
+  photoAssetId?: number;
+  voiceAssetId?: number;
 };
 
 export async function queueOfflineDraft(input: OfflineDraftInput) {
@@ -198,7 +202,7 @@ async function processDraft(draft: OfflineDraft) {
       await saveDraft(current);
     }
     const attachmentIds = [current.photoAssetId, current.voiceAssetId].filter((value): value is number => Number.isInteger(value));
-    await publishQuestion({ title: current.title, body: current.body, category: current.category, hasVoice: current.hasVoice, hasPhoto: current.hasPhoto, photoName: current.photoName, attachmentIds, clientRequestId: current.clientRequestId });
+    await publishQuestion({ title: current.title, body: current.body, category: current.category, hasVoice: current.hasVoice, hasPhoto: current.hasPhoto, photoName: current.photoName, attachmentIds, clientRequestId: current.clientRequestId, voiceTranscript: current.voiceTranscript });
     await saveDraft({ ...current, status: 'synced', syncedAt: new Date().toISOString(), photoBlob: undefined, voiceBlob: undefined });
   } catch (error) {
     await saveDraft({ ...current, status: 'failed', lastError: error instanceof Error ? error.message : 'Échec de synchronisation.' });

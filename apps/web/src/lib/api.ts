@@ -71,6 +71,8 @@ export type PersistedQuestion = {
   photo_name?: string | null;
   photo_asset_id?: number | null;
   voice_asset_id?: number | null;
+  voice_transcript?: string | null;
+  voice_transcript_language?: 'fr' | 'mo' | 'unknown' | null;
   status?: 'open' | 'answered' | 'closed';
   answer_count?: number;
   useful_count?: number;
@@ -96,6 +98,16 @@ export async function uploadMedia(file: Blob, kind: 'photo' | 'voice', fileName 
   return request<{ data: UploadedMedia }>('/media', { method: 'POST', body: form, headers: { Accept: 'application/json' } });
 }
 
+export type VoiceTranscription = { id: number; transcript: string; language: 'fr' | 'mo' | 'unknown'; provider: string; model: string; consent_at: string; created_at: string };
+
+export function getVoiceTranscriptionStatus() {
+  return request<{ data: { enabled: boolean; supportedLanguages: string[]; mooreAvailable: boolean } }>('/transcriptions');
+}
+
+export function transcribeVoice(mediaId: number, language: 'fr' | 'mo', consent: boolean) {
+  return request<{ data: VoiceTranscription; warning?: string; reused?: boolean }>('/transcriptions', { method: 'POST', body: JSON.stringify({ mediaId, language, consent }) });
+}
+
 export type PhotoDiagnosis = {
   id: number;
   media_asset_id: number;
@@ -108,7 +120,7 @@ export function analyzePhoto(mediaId: number, category: string, context: string)
   return request<{ data: PhotoDiagnosis }>('/diagnostics', { method: 'POST', body: JSON.stringify({ mediaId, category, context }) });
 }
 
-export function publishQuestion(input: { title: string; body: string; category: string; hasVoice?: boolean; hasPhoto?: boolean; photoName?: string; attachmentIds?: number[]; diagnosisId?: number; clientRequestId?: string }) {
+export function publishQuestion(input: { title: string; body: string; category: string; hasVoice?: boolean; hasPhoto?: boolean; photoName?: string; attachmentIds?: number[]; diagnosisId?: number; clientRequestId?: string; voiceTranscript?: string }) {
   return request<{ data: PersistedQuestion }>('/questions', { method: 'POST', body: JSON.stringify(input) });
 }
 

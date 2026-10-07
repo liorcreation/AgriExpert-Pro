@@ -20,6 +20,8 @@ export async function onRequest(context) {
       env.DB.prepare(`SELECT q.id, q.category, q.title, q.body, q.language, q.has_voice, q.has_photo, q.photo_name, q.status, q.created_at, u.name AS author_name,
         (SELECT m.id FROM media_assets m WHERE m.question_id = q.id AND m.kind = 'photo' ORDER BY m.id ASC LIMIT 1) AS photo_asset_id,
         (SELECT m.id FROM media_assets m WHERE m.question_id = q.id AND m.kind = 'voice' ORDER BY m.id ASC LIMIT 1) AS voice_asset_id,
+        (SELECT t.transcript FROM voice_transcriptions t JOIN media_assets vm ON vm.id = t.media_asset_id WHERE vm.question_id = q.id AND vm.kind = 'voice' ORDER BY t.id DESC LIMIT 1) AS voice_transcript,
+        (SELECT t.language FROM voice_transcriptions t JOIN media_assets vm ON vm.id = t.media_asset_id WHERE vm.question_id = q.id AND vm.kind = 'voice' ORDER BY t.id DESC LIMIT 1) AS voice_transcript_language,
         (SELECT COUNT(*) FROM question_answers a WHERE a.question_id = q.id) AS answer_count,
         (SELECT COUNT(*) FROM question_reactions r WHERE r.question_id = q.id AND r.reaction = 'useful') AS useful_count,
         (SELECT d.id FROM diagnoses d WHERE d.question_id = q.id ORDER BY d.id DESC LIMIT 1) AS diagnosis_id
@@ -48,11 +50,12 @@ export async function onRequest(context) {
   const category = String(input.category ?? '');
   const title = String(input.title ?? '').trim();
   const body = String(input.body ?? '').trim();
+  const voiceTranscript = String(input.voiceTranscript ?? '').trim().slice(0, 10000);
   const clientRequestId = String(input.clientRequestId ?? '').trim().slice(0, 160) || null;
   const attachmentIds = Array.isArray(input.attachmentIds) ? input.attachmentIds.map(Number).filter(Number.isInteger).slice(0, 4) : [];
   const language = input.language === 'mo' ? 'mo' : 'fr';
   if (!categories.has(category)) return json(request, env, invalid('Secteur invalide.'), 422);
-  if (title.length < 4 || title.length > 200 || body.length < 5 || body.length > 10000) return json(request, env, invalid('Le titre doit contenir 4 à 200 caractères et la description 5 à 10 000 caractères.'), 422);
+  if (title.length < 4 || title.length > 200 || (body.length < 5 && voiceTranscript.length < 5) || body.length > 10000) return json(request, env, invalid('Le titre doit contenir 4 à 200 caractères et une description ou transcription exploitable.'), 422);
   const generatedAttachmentIds = clientRequestId
     ? await env.DB.prepare(`SELECT id FROM media_assets WHERE owner_user_id = ? AND client_request_id IN (?, ?)`).bind(user.id, `${clientRequestId}:photo`, `${clientRequestId}:voice`).all()
     : { results: [] };
@@ -67,9 +70,10 @@ export async function onRequest(context) {
       return json(request, env, { data: existing }, 200);
     }
   }
+  const questionBody = body || voiceTranscript || 'Question transmise depuis le terrain.';
   const result = await env.DB.prepare(`INSERT INTO questions (author_user_id, category, title, body, language, has_voice, has_photo, photo_name, client_request_id)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id, category, title, body, language, has_voice, has_photo, photo_name, status, created_at`)
-    .bind(user.id, category, title, body, language, input.hasVoice ? 1 : 0, input.hasPhoto ? 1 : 0, input.photoName ? String(input.photoName).slice(0, 255) : null, clientRequestId).first();
+    .bind(user.id, category, title, questionBody, language, input.hasVoice ? 1 : 0, input.hasPhoto ? 1 : 0, input.photoName ? String(input.photoName).slice(0, 255) : null, clientRequestId).first();
   if (resolvedAttachmentIds.length) {
     await env.DB.prepare(`UPDATE media_assets SET question_id = ? WHERE owner_user_id = ? AND id IN (${resolvedAttachmentIds.map(() => '?').join(',')})`)
       .bind(result.id, user.id, ...resolvedAttachmentIds).run();

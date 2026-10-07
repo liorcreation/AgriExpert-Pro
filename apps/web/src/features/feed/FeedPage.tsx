@@ -27,6 +27,8 @@ function mapPersistedQuestion(question: PersistedQuestion): FeedQuestion {
     photoName: question.photo_name ?? undefined,
     photoUrl: question.photo_asset_id ? mediaUrl(question.photo_asset_id) : undefined,
     voiceUrl: question.voice_asset_id ? mediaUrl(question.voice_asset_id) : undefined,
+    voiceTranscript: question.voice_transcript ?? undefined,
+    voiceTranscriptLanguage: question.voice_transcript_language ?? undefined,
     answerCount: question.answer_count ?? 0,
     usefulCount: question.useful_count ?? 0,
     answer: question.answer ? {
@@ -108,15 +110,15 @@ export function FeedPage({ role, onBack, onNavigate }: { role: UserRole; onBack:
       .sort((left, right) => sortByAnswers ? right.answerCount - left.answerCount : questions.indexOf(left) - questions.indexOf(right));
   }, [filter, questions, search, sortByAnswers]);
 
-  async function addQuestion(payload: { title: string; body: string; category: FeedCategory; hasVoice: boolean; hasPhoto: boolean; photo?: File; voice?: Blob; photoName?: string; photoPreview?: string; photoAssetId?: number; diagnosisId?: number }) {
+  async function addQuestion(payload: { title: string; body: string; category: FeedCategory; hasVoice: boolean; hasPhoto: boolean; photo?: File; voice?: Blob; photoName?: string; photoPreview?: string; photoAssetId?: number; voiceAssetId?: number; voiceTranscript?: string; diagnosisId?: number }) {
     const clientRequestId = `question-${crypto.randomUUID()}`;
     if (isOnline && isApiConfigured) {
       try {
         const attachments = await Promise.all([
           payload.photoAssetId ? null : payload.photo ? uploadMedia(payload.photo, 'photo', payload.photo.name, `${clientRequestId}:photo`) : null,
-          payload.voice ? uploadMedia(payload.voice, 'voice', 'question.webm', `${clientRequestId}:voice`) : null,
+          payload.voiceAssetId ? null : payload.voice ? uploadMedia(payload.voice, 'voice', 'question.webm', `${clientRequestId}:voice`) : null,
         ]);
-        const response = await publishQuestion({ title: payload.title, body: payload.body, category: payload.category, hasVoice: payload.hasVoice, hasPhoto: payload.hasPhoto, photoName: payload.photoName, diagnosisId: payload.diagnosisId, clientRequestId, attachmentIds: [payload.photoAssetId, ...attachments.flatMap((item) => item ? [item.data.id] : [])].filter((item): item is number => Number.isInteger(item)) });
+        const response = await publishQuestion({ title: payload.title, body: payload.body, category: payload.category, hasVoice: payload.hasVoice, hasPhoto: payload.hasPhoto, photoName: payload.photoName, diagnosisId: payload.diagnosisId, clientRequestId, voiceTranscript: payload.voiceTranscript, attachmentIds: [payload.photoAssetId, payload.voiceAssetId, ...attachments.flatMap((item) => item ? [item.data.id] : [])].filter((item): item is number => Number.isInteger(item)) });
         setQuestions((current) => [mapPersistedQuestion(response.data), ...current]);
         setComposerOpen(false);
         return;
@@ -126,7 +128,7 @@ export function FeedPage({ role, onBack, onNavigate }: { role: UserRole; onBack:
     }
     const newQuestion: FeedQuestion = { id: `question-${Date.now()}`, title: payload.title, body: payload.body, category: payload.category, hasVoice: payload.hasVoice, hasPhoto: payload.hasPhoto, photoName: payload.photoName, photoPreview: payload.photoPreview, authorName: 'Vous', authorLocation: 'Votre exploitation', createdAt: 'À l’instant', answerCount: 0 };
     setQuestions((current) => [newQuestion, ...current]);
-    await queueOfflineDraft({ clientRequestId, title: payload.title, body: payload.body, category: payload.category, hasVoice: payload.hasVoice, hasPhoto: payload.hasPhoto, photo: payload.photo, voice: payload.voice, photoName: payload.photoName, voiceName: 'question.webm' });
+    await queueOfflineDraft({ clientRequestId, title: payload.title, body: payload.body, category: payload.category, hasVoice: payload.hasVoice, hasPhoto: payload.hasPhoto, photo: payload.photo, voice: payload.voice, photoAssetId: payload.photoAssetId, voiceAssetId: payload.voiceAssetId, voiceTranscript: payload.voiceTranscript, photoName: payload.photoName, voiceName: 'question.webm' });
     await refreshOfflineCount();
     setComposerOpen(false);
   }

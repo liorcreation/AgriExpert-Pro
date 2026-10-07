@@ -7,7 +7,9 @@
     "ALLOWED_ORIGIN": "https://agriexpert-pro.pages.dev",
     "SUPABASE_URL": "https://qoufscpuusjrtssezkai.supabase.co",
     "SUPABASE_BUCKET": "agriexpert-media",
-    "OPENAI_VISION_MODEL": "gpt-6-astra"
+    "OPENAI_VISION_MODEL": "gpt-6-astra",
+    "OPENAI_TRANSCRIPTION_ENABLED": "false",
+    "OPENAI_TRANSCRIPTION_MODEL": "whisper-1"
   },
   "d1_databases": [
     {

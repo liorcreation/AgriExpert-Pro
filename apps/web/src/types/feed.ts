@@ -26,6 +26,8 @@ export type FeedQuestion = {
   photoPreview?: string;
   photoUrl?: string;
   voiceUrl?: string;
+  voiceTranscript?: string;
+  voiceTranscriptLanguage?: 'fr' | 'mo' | 'unknown';
   answerCount: number;
   usefulCount?: number;
   reacted?: boolean;
