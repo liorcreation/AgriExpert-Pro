@@ -152,6 +152,7 @@ async function requestBackgroundSync() {
 }
 
 export type OfflineDraftInput = {
+  clientRequestId?: string;
   title: string;
   body: string;
   category: string;
@@ -165,8 +166,9 @@ export type OfflineDraftInput = {
 
 export async function queueOfflineDraft(input: OfflineDraftInput) {
   const now = new Date().toISOString();
-  const id = `offline-${crypto.randomUUID()}`;
-  const draft: OfflineDraft = { ...input, id, clientRequestId: id, createdAt: now, updatedAt: now, retryCount: 0, status: 'queued' };
+  const id = input.clientRequestId ?? `offline-${crypto.randomUUID()}`;
+  const { clientRequestId: _inputClientRequestId, ...draftInput } = input;
+  const draft: OfflineDraft = { ...draftInput, id, clientRequestId: id, createdAt: now, updatedAt: now, retryCount: 0, status: 'queued' };
   await saveDraft(draft);
   await requestBackgroundSync();
   return draft;

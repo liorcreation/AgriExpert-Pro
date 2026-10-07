@@ -90,13 +90,14 @@ export function FeedPage({ role, onBack }: { role: UserRole; onBack: () => void 
   }, [filter, questions, search, sortByAnswers]);
 
   async function addQuestion(payload: { title: string; body: string; category: FeedCategory; hasVoice: boolean; hasPhoto: boolean; photo?: File; voice?: Blob; photoName?: string; photoPreview?: string; photoAssetId?: number; diagnosisId?: number }) {
+    const clientRequestId = `question-${crypto.randomUUID()}`;
     if (isOnline && isApiConfigured) {
       try {
         const attachments = await Promise.all([
-          payload.photoAssetId ? null : payload.photo ? uploadMedia(payload.photo, 'photo', payload.photo.name) : null,
-          payload.voice ? uploadMedia(payload.voice, 'voice', 'question.webm') : null,
+          payload.photoAssetId ? null : payload.photo ? uploadMedia(payload.photo, 'photo', payload.photo.name, `${clientRequestId}:photo`) : null,
+          payload.voice ? uploadMedia(payload.voice, 'voice', 'question.webm', `${clientRequestId}:voice`) : null,
         ]);
-        const response = await publishQuestion({ title: payload.title, body: payload.body, category: payload.category, hasVoice: payload.hasVoice, hasPhoto: payload.hasPhoto, photoName: payload.photoName, diagnosisId: payload.diagnosisId, attachmentIds: [payload.photoAssetId, ...attachments.flatMap((item) => item ? [item.data.id] : [])].filter((item): item is number => Number.isInteger(item)) });
+        const response = await publishQuestion({ title: payload.title, body: payload.body, category: payload.category, hasVoice: payload.hasVoice, hasPhoto: payload.hasPhoto, photoName: payload.photoName, diagnosisId: payload.diagnosisId, clientRequestId, attachmentIds: [payload.photoAssetId, ...attachments.flatMap((item) => item ? [item.data.id] : [])].filter((item): item is number => Number.isInteger(item)) });
         setQuestions((current) => [mapPersistedQuestion(response.data), ...current]);
         setComposerOpen(false);
         return;
@@ -106,7 +107,7 @@ export function FeedPage({ role, onBack }: { role: UserRole; onBack: () => void 
     }
     const newQuestion: FeedQuestion = { id: `question-${Date.now()}`, title: payload.title, body: payload.body, category: payload.category, hasVoice: payload.hasVoice, hasPhoto: payload.hasPhoto, photoName: payload.photoName, photoPreview: payload.photoPreview, authorName: 'Vous', authorLocation: 'Votre exploitation', createdAt: 'À l’instant', answerCount: 0 };
     setQuestions((current) => [newQuestion, ...current]);
-    await queueOfflineDraft({ title: payload.title, body: payload.body, category: payload.category, hasVoice: payload.hasVoice, hasPhoto: payload.hasPhoto, photo: payload.photo, voice: payload.voice, photoName: payload.photoName, voiceName: 'question.webm' });
+    await queueOfflineDraft({ clientRequestId, title: payload.title, body: payload.body, category: payload.category, hasVoice: payload.hasVoice, hasPhoto: payload.hasPhoto, photo: payload.photo, voice: payload.voice, photoName: payload.photoName, voiceName: 'question.webm' });
     await refreshOfflineCount();
     setComposerOpen(false);
   }

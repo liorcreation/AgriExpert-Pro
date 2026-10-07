@@ -52,11 +52,15 @@ export async function onRequest(context) {
   const language = input.language === 'mo' ? 'mo' : 'fr';
   if (!categories.has(category)) return json(request, env, invalid('Secteur invalide.'), 422);
   if (title.length < 4 || title.length > 200 || body.length < 5 || body.length > 10000) return json(request, env, invalid('Le titre doit contenir 4 à 200 caractères et la description 5 à 10 000 caractères.'), 422);
+  const generatedAttachmentIds = clientRequestId
+    ? await env.DB.prepare(`SELECT id FROM media_assets WHERE owner_user_id = ? AND client_request_id IN (?, ?)`).bind(user.id, `${clientRequestId}:photo`, `${clientRequestId}:voice`).all()
+    : { results: [] };
+  const resolvedAttachmentIds = [...new Set([...attachmentIds, ...generatedAttachmentIds.results.map((item) => Number(item.id))])].filter(Number.isInteger).slice(0, 4);
   if (clientRequestId) {
     const existing = await env.DB.prepare(`SELECT q.id, q.category, q.title, q.body, q.language, q.has_voice, q.has_photo, q.photo_name, q.status, q.created_at, u.name AS author_name
       FROM questions q JOIN users u ON u.id = q.author_user_id WHERE q.author_user_id = ? AND q.client_request_id = ?`).bind(user.id, clientRequestId).first();
     if (existing) {
-      if (attachmentIds.length) await env.DB.prepare(`UPDATE media_assets SET question_id = ? WHERE owner_user_id = ? AND id IN (${attachmentIds.map(() => '?').join(',')})`).bind(existing.id, user.id, ...attachmentIds).run();
+      if (resolvedAttachmentIds.length) await env.DB.prepare(`UPDATE media_assets SET question_id = ? WHERE owner_user_id = ? AND id IN (${resolvedAttachmentIds.map(() => '?').join(',')})`).bind(existing.id, user.id, ...resolvedAttachmentIds).run();
       const existingDiagnosisId = Number(input.diagnosisId);
       if (Number.isInteger(existingDiagnosisId) && existingDiagnosisId > 0) await env.DB.prepare('UPDATE diagnoses SET question_id = ? WHERE id = ? AND author_user_id = ?').bind(existing.id, existingDiagnosisId, user.id).run();
       return json(request, env, { data: existing }, 200);
@@ -65,9 +69,9 @@ export async function onRequest(context) {
   const result = await env.DB.prepare(`INSERT INTO questions (author_user_id, category, title, body, language, has_voice, has_photo, photo_name, client_request_id)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id, category, title, body, language, has_voice, has_photo, photo_name, status, created_at`)
     .bind(user.id, category, title, body, language, input.hasVoice ? 1 : 0, input.hasPhoto ? 1 : 0, input.photoName ? String(input.photoName).slice(0, 255) : null, clientRequestId).first();
-  if (attachmentIds.length) {
-    await env.DB.prepare(`UPDATE media_assets SET question_id = ? WHERE owner_user_id = ? AND id IN (${attachmentIds.map(() => '?').join(',')})`)
-      .bind(result.id, user.id, ...attachmentIds).run();
+  if (resolvedAttachmentIds.length) {
+    await env.DB.prepare(`UPDATE media_assets SET question_id = ? WHERE owner_user_id = ? AND id IN (${resolvedAttachmentIds.map(() => '?').join(',')})`)
+      .bind(result.id, user.id, ...resolvedAttachmentIds).run();
   }
   const diagnosisId = Number(input.diagnosisId);
   if (Number.isInteger(diagnosisId) && diagnosisId > 0) {
