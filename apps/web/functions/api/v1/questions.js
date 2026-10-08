@@ -1,4 +1,4 @@
-import { currentUser, invalid, json, options } from '../../_shared/auth.js';
+import { currentUser, invalid, json, options, rateLimitResponse } from '../../_shared/auth.js';
 
 const categories = new Set(['agriculture', 'livestock', 'aquaculture', 'apiculture']);
 
@@ -45,6 +45,8 @@ export async function onRequest(context) {
   if (request.method !== 'POST') return json(request, env, invalid('Méthode non autorisée.'), 405);
   const user = await currentUser(env.DB, request);
   if (!user) return json(request, env, invalid('Connectez-vous pour publier une question.'), 401);
+  const limited = await rateLimitResponse(env.DB, request, env, `questions:${user.id}`, 8, 3600);
+  if (limited) return limited;
   let input = {};
   try { input = await request.json(); } catch { return json(request, env, invalid('Corps JSON invalide.'), 400); }
   const category = String(input.category ?? '');

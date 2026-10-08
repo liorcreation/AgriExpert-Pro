@@ -90,12 +90,17 @@ export function mediaUrl(mediaId: number) {
 
 export type UploadedMedia = { id: number; kind: 'photo' | 'voice'; file_name?: string; mime_type: string; size_bytes: number };
 
-export async function uploadMedia(file: Blob, kind: 'photo' | 'voice', fileName = 'terrain-media', clientRequestId?: string) {
+export async function uploadMedia(file: Blob, kind: 'photo' | 'voice', fileName = 'terrain-media', clientRequestId?: string, consent = false) {
   const form = new FormData();
   form.append('file', file, fileName);
   form.append('kind', kind);
   if (clientRequestId) form.append('client_request_id', clientRequestId);
+  if (consent) form.append('consent', 'true');
   return request<{ data: UploadedMedia }>('/media', { method: 'POST', body: form, headers: { Accept: 'application/json' } });
+}
+
+export function deleteUnattachedMedia(mediaId: number) {
+  return request<{ message: string }>(`/media/${mediaId}`, { method: 'DELETE' });
 }
 
 export type VoiceTranscription = { id: number; transcript: string; language: 'fr' | 'mo' | 'unknown'; provider: string; model: string; consent_at: string; created_at: string };
@@ -116,8 +121,8 @@ export type PhotoDiagnosis = {
   result: { summary: string; confidence: number; observations: string[]; hypotheses: Array<{ label: string; confidence: number; rationale: string }>; next_steps: string[]; red_flags: string[]; expert_needed: boolean; disclaimer: string };
 };
 
-export function analyzePhoto(mediaId: number, category: string, context: string) {
-  return request<{ data: PhotoDiagnosis }>('/diagnostics', { method: 'POST', body: JSON.stringify({ mediaId, category, context }) });
+export function analyzePhoto(mediaId: number, category: string, context: string, consent: boolean) {
+  return request<{ data: PhotoDiagnosis }>('/diagnostics', { method: 'POST', body: JSON.stringify({ mediaId, category, context, consent }) });
 }
 
 export function publishQuestion(input: { title: string; body: string; category: string; hasVoice?: boolean; hasPhoto?: boolean; photoName?: string; attachmentIds?: number[]; diagnosisId?: number; clientRequestId?: string; voiceTranscript?: string }) {
@@ -127,8 +132,16 @@ export function publishQuestion(input: { title: string; body: string; category: 
 export type EmergencyExpert = { id: number; name: string; specialty: string; latitude: number; longitude: number; distance_km: number; status: string; last_seen_at?: string | null };
 export type EmergencyReceipt = { data: { id: number; reference: string; status: string; assignment_status?: string; assignment?: { expert_name?: string; distance_km?: number; status?: string } | null; fallback_available?: boolean } };
 
-export function createEmergency(input: { kind: string; title: string; description: string; priority: string; latitude: number; longitude: number; attachmentIds?: number[] }) {
+export function createEmergency(input: { kind: string; title: string; description: string; priority: string; latitude: number; longitude: number; locationConsent: boolean; attachmentIds?: number[] }) {
   return request<EmergencyReceipt>('/emergencies', { method: 'POST', body: JSON.stringify(input) });
+}
+
+export function exportAccountData() {
+  return request<{ data: Record<string, unknown> }>('/account/data');
+}
+
+export function requestAccountDeletion() {
+  return request<{ message: string; data: { requestId: number; status: string } }>('/account/data', { method: 'DELETE' });
 }
 
 export type PersistedEmergency = { id: number; reference: string; kind: string; title: string; description: string; priority: string; latitude: number; longitude: number; status: string; assigned_expert_user_id?: number | null; assigned_expert_name?: string | null; assigned_expert_profile?: string | null; assignment_status?: string | null; assignment_distance_km?: number | null; assignment_expires_at?: string | null; acknowledged_at?: string | null; sla_due_at?: string | null; escalation_count?: number; created_at: string };

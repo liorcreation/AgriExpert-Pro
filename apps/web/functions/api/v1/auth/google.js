@@ -1,9 +1,11 @@
-import { body, createSession, invalid, json, options, userPayload, verifyGoogleCredential } from '../../../_shared/auth.js';
+import { body, createSession, invalid, json, options, rateLimitResponse, userPayload, verifyGoogleCredential } from '../../../_shared/auth.js';
 
 export async function onRequest(context) {
   const { request, env } = context;
   if (request.method === 'OPTIONS') return options(request, env);
   if (request.method !== 'POST') return json(request, env, invalid('Méthode non autorisée.'), 405);
+  const limited = await rateLimitResponse(env.DB, request, env, 'google-auth', 10, 900);
+  if (limited) return limited;
   if (!env.GOOGLE_CLIENT_ID) return json(request, env, invalid('La connexion Google n’est pas encore activée.'), 503);
   const input = await body(request);
   try {

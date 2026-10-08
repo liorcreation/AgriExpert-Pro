@@ -3,7 +3,15 @@ const SESSION_DAYS = 30;
 const encoder = new TextEncoder();
 
 export function apiHeaders(request, env) {
-  const headers = { 'Cache-Control': 'no-store', 'Content-Type': 'application/json' };
+  const headers = {
+    'Cache-Control': 'no-store',
+    'Content-Type': 'application/json',
+    'X-Content-Type-Options': 'nosniff',
+    'X-Frame-Options': 'DENY',
+    'Referrer-Policy': 'no-referrer',
+    'Permissions-Policy': 'geolocation=(self), camera=(self), microphone=(self)',
+  };
+  if (new URL(request.url).protocol === 'https:') headers['Strict-Transport-Security'] = 'max-age=31536000; includeSubDomains';
   const origin = request.headers.get('Origin');
   if (env.ALLOWED_ORIGIN && origin === env.ALLOWED_ORIGIN) {
     headers['Access-Control-Allow-Origin'] = origin;
@@ -153,4 +161,25 @@ export async function createPasswordlessSession(db, userId, request) {
 
 export function invalid(message) {
   return { message };
+}
+
+export async function rateLimit(db, request, namespace, limit, windowSeconds) {
+  const address = request.headers.get('CF-Connecting-IP') ?? 'unknown';
+  const source = new TextEncoder().encode(`${namespace}:${address}`);
+  const digest = new Uint8Array(await crypto.subtle.digest('SHA-256', source));
+  const key = [...digest].map((byte) => byte.toString(16).padStart(2, '0')).join('');
+  const modifier = `-${windowSeconds} seconds`;
+  const row = await db.prepare(`INSERT INTO api_rate_limits (key_hash, window_started_at, hit_count)
+    VALUES (?, datetime('now'), 1)
+    ON CONFLICT(key_hash) DO UPDATE SET
+      hit_count = CASE WHEN window_started_at <= datetime('now', ?) THEN 1 ELSE hit_count + 1 END,
+      window_started_at = CASE WHEN window_started_at <= datetime('now', ?) THEN datetime('now') ELSE window_started_at END
+    RETURNING hit_count, window_started_at`).bind(key, modifier, modifier).first();
+  if (Math.random() < 0.01) await db.prepare(`DELETE FROM api_rate_limits WHERE window_started_at < datetime('now', '-2 days')`).run();
+  return { allowed: Number(row?.hit_count ?? limit + 1) <= limit, retryAfter: windowSeconds };
+}
+
+export async function rateLimitResponse(db, request, env, namespace, limit, windowSeconds) {
+  const result = await rateLimit(db, request, namespace, limit, windowSeconds);
+  return result.allowed ? null : json(request, env, invalid('Trop de tentatives. Réessayez plus tard.'), 429, { 'Retry-After': String(result.retryAfter) });
 }

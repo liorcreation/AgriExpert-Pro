@@ -1,4 +1,4 @@
-import { currentUser, invalid, json, options, userPayload } from '../../../../_shared/auth.js';
+import { currentUser, invalid, json, options, rateLimitResponse, userPayload } from '../../../../_shared/auth.js';
 
 export async function onRequest(context) {
   const { request, env, params } = context;
@@ -15,6 +15,8 @@ export async function onRequest(context) {
     return json(request, env, { data: rows.results });
   }
   if (request.method !== 'POST') return json(request, env, invalid('Méthode non autorisée.'), 405);
+  const limited = await rateLimitResponse(env.DB, request, env, `answers:${user.id}`, 20, 3600);
+  if (limited) return limited;
   if (user.role !== 'expert' && user.role !== 'institution') return json(request, env, invalid('Seuls les experts habilités peuvent répondre.'), 403);
   let input = {};
   try { input = await request.json(); } catch { return json(request, env, invalid('Corps JSON invalide.'), 400); }

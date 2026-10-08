@@ -1,4 +1,4 @@
-import { currentUser, invalid, json, options } from '../../_shared/auth.js';
+import { currentUser, invalid, json, options, rateLimitResponse } from '../../_shared/auth.js';
 
 const MAX_TRANSCRIBE_BYTES = 12 * 1024 * 1024;
 
@@ -12,6 +12,8 @@ export async function onRequest(context) {
     return json(request, env, { data: { enabled: env.OPENAI_TRANSCRIPTION_ENABLED === 'true' && Boolean(env.OPENAI_API_KEY), supportedLanguages: ['fr'], mooreAvailable: false } });
   }
   if (request.method !== 'POST') return json(request, env, invalid('Méthode non autorisée.'), 405);
+  const limited = await rateLimitResponse(env.DB, request, env, `transcriptions:${user.id}`, 5, 3600);
+  if (limited) return limited;
 
   let input = {};
   try { input = await request.json(); } catch { return json(request, env, invalid('Corps JSON invalide.'), 400); }

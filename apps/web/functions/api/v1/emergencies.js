@@ -1,4 +1,4 @@
-import { currentUser, invalid, json, options } from '../../_shared/auth.js';
+import { currentUser, invalid, json, options, rateLimitResponse } from '../../_shared/auth.js';
 import { assignNextExpert, availableExperts, dispatchEmergencyFallback, expireAndEscalate, publicExpert } from '../../_shared/emergencies.js';
 
 const kinds = new Set(['veterinary', 'phytosanitary', 'livestock_epidemic', 'pest_attack', 'water_quality']);
@@ -29,6 +29,8 @@ export async function onRequest(context) {
     return json(request, env, { data: refreshed.results.map((item) => ({ ...item, assignment_distance_km: item.assignment_distance_km == null ? null : Number(item.assignment_distance_km) })) });
   }
   if (request.method !== 'POST') return json(request, env, invalid('Méthode non autorisée.'), 405);
+  const limited = await rateLimitResponse(env.DB, request, env, `emergency:${user.id}`, 5, 600);
+  if (limited) return limited;
   let input = {};
   try { input = await request.json(); } catch { return json(request, env, invalid('Corps JSON invalide.'), 400); }
   const kind = String(input.kind ?? '');
@@ -37,6 +39,7 @@ export async function onRequest(context) {
   const priority = String(input.priority ?? 'high');
   const latitude = Number(input.latitude);
   const longitude = Number(input.longitude);
+  if (input.locationConsent !== true) return json(request, env, invalid('Votre accord explicite est requis pour joindre la position au signalement.'), 422);
   if (!kinds.has(kind) || !priorities.has(priority)) return json(request, env, invalid('Type ou priorité de signalement invalide.'), 422);
   if (title.length < 4 || title.length > 200 || description.length > 10000) return json(request, env, invalid('Le titre ou la description ne respecte pas les limites autorisées.'), 422);
   if (!Number.isFinite(latitude) || latitude < -90 || latitude > 90 || !Number.isFinite(longitude) || longitude < -180 || longitude > 180) return json(request, env, invalid('Une position GPS valide est nécessaire.'), 422);
@@ -44,6 +47,8 @@ export async function onRequest(context) {
   const result = await env.DB.prepare(`INSERT INTO emergencies (reference, author_user_id, kind, title, description, priority, latitude, longitude)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?) RETURNING id, reference, kind, title, description, priority, latitude, longitude, status, created_at`)
     .bind(reference, user.id, kind, title, description, priority, latitude, longitude).first();
+  await env.DB.prepare(`INSERT INTO user_consents (user_id, purpose, policy_version, granted, context_json) VALUES (?, 'precise_location_for_emergency', '2026-10-08-draft', 1, ?)`)
+    .bind(user.id, JSON.stringify({ emergencyId: result.id, purpose: 'expert matching and case handling' })).run();
   await env.DB.prepare(`INSERT INTO emergency_events (emergency_id, actor_user_id, status, note) VALUES (?, ?, 'open', ?)`)
     .bind(result.id, user.id, 'Signalement créé par le producteur.').run();
   const attachmentIds = Array.isArray(input.attachmentIds) ? input.attachmentIds.map(Number).filter(Number.isInteger).slice(0, 4) : [];

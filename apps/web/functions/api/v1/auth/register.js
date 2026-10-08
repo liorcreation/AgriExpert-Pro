@@ -1,4 +1,4 @@
-import { body, createSession, invalid, json, options, hashPassword, userPayload } from '../../../_shared/auth.js';
+import { body, createSession, invalid, json, options, hashPassword, rateLimitResponse, userPayload } from '../../../_shared/auth.js';
 
 const roles = new Set(['producer', 'expert', 'institution']);
 
@@ -6,6 +6,8 @@ export async function onRequest(context) {
   const { request, env } = context;
   if (request.method === 'OPTIONS') return options(request, env);
   if (request.method !== 'POST') return json(request, env, invalid('Méthode non autorisée.'), 405);
+  const limited = await rateLimitResponse(env.DB, request, env, 'register', 5, 3600);
+  if (limited) return limited;
   const input = await body(request);
   const name = String(input.name ?? '').trim();
   const email = String(input.email ?? '').trim().toLowerCase();

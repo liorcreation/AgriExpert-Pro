@@ -1,4 +1,4 @@
-import { body, currentUser, invalid, json, options } from '../../_shared/auth.js';
+import { body, currentUser, invalid, json, options, rateLimitResponse } from '../../_shared/auth.js';
 import { createPaydunyaCheckout, paydunyaConfigured } from '../../_shared/billing.js';
 
 const allowedFeatures = new Set(['photo_diagnosis', 'offline_sync', 'expert_priority', 'institution_reports', 'team_seats']);
@@ -43,6 +43,8 @@ export async function onRequest(context) {
   }
 
   if (request.method !== 'POST') return json(request, env, invalid('Méthode non autorisée.'), 405);
+  const limited = await rateLimitResponse(env.DB, request, env, `billing:${user.id}`, 5, 600);
+  if (limited) return limited;
   const input = await body(request);
   if (input.action === 'create-checkout') {
     const code = String(input.code ?? '');

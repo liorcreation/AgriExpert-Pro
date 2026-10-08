@@ -121,8 +121,8 @@ export function FeedPage({ role, onBack, onNavigate, openComposerRequest = false
     if (isOnline && isApiConfigured) {
       try {
         const attachments = await Promise.all([
-          payload.photoAssetId ? null : payload.photo ? uploadMedia(payload.photo, 'photo', payload.photo.name, `${clientRequestId}:photo`) : null,
-          payload.voiceAssetId ? null : payload.voice ? uploadMedia(payload.voice, 'voice', 'question.webm', `${clientRequestId}:voice`) : null,
+          payload.photoAssetId ? null : payload.photo ? uploadMedia(payload.photo, 'photo', payload.photo.name, `${clientRequestId}:photo`, true) : null,
+          payload.voiceAssetId ? null : payload.voice ? uploadMedia(payload.voice, 'voice', 'question.webm', `${clientRequestId}:voice`, true) : null,
         ]);
         const response = await publishQuestion({ title: payload.title, body: payload.body, category: payload.category, hasVoice: payload.hasVoice, hasPhoto: payload.hasPhoto, photoName: payload.photoName, diagnosisId: payload.diagnosisId, clientRequestId, voiceTranscript: payload.voiceTranscript, attachmentIds: [payload.photoAssetId, payload.voiceAssetId, ...attachments.flatMap((item) => item ? [item.data.id] : [])].filter((item): item is number => Number.isInteger(item)) });
         setQuestions((current) => [mapPersistedQuestion(response.data), ...current]);
@@ -240,7 +240,7 @@ function ExpertOperationsWorkspace({ onBack, onNavigate }: { onBack: () => void;
     if (!draft.trim() && !voice) return;
     let voiceAssetId: number | undefined;
     setBusy('reply'); setError('');
-    try { if (voice) voiceAssetId = (await uploadMedia(voice, 'voice', 'reponse-expert.webm')).data.id; await performAction({ action: 'reply', body: draft.trim() || 'Réponse vocale jointe.', language: 'fr', voiceAssetId }); } catch (reason: unknown) { setError(reason instanceof Error ? reason.message : 'Envoi de la réponse impossible.'); setBusy(''); }
+    try { if (voice) voiceAssetId = (await uploadMedia(voice, 'voice', 'reponse-expert.webm', undefined, true)).data.id; await performAction({ action: 'reply', body: draft.trim() || 'Réponse vocale jointe.', language: 'fr', voiceAssetId }); } catch (reason: unknown) { setError(reason instanceof Error ? reason.message : 'Envoi de la réponse impossible.'); setBusy(''); }
   }
 
   async function toggleAvailability() {

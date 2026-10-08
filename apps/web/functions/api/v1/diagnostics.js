@@ -1,4 +1,4 @@
-import { currentUser, invalid, json, options } from '../../_shared/auth.js';
+import { currentUser, invalid, json, options, rateLimitResponse } from '../../_shared/auth.js';
 
 const categories = new Set(['agriculture', 'livestock', 'aquaculture', 'apiculture']);
 const model = 'gpt-6-astra';
@@ -73,15 +73,20 @@ export async function onRequest(context) {
     return json(request, env, { data: rows.results.map((item) => ({ ...item, result: parseResult(item.result_json) })) });
   }
   if (request.method !== 'POST') return json(request, env, invalid('Méthode non autorisée.'), 405);
+  const limited = await rateLimitResponse(env.DB, request, env, `diagnostics:${user.id}`, 5, 86400);
+  if (limited) return limited;
   if (!env.OPENAI_API_KEY || !env.SUPABASE_URL || !env.SUPABASE_SECRET_KEY) return json(request, env, invalid('Le diagnostic assisté n’est pas encore configuré.'), 503);
   let input = {};
   try { input = await request.json(); } catch { return json(request, env, invalid('Corps JSON invalide.'), 400); }
+  if (input.consent !== true) return json(request, env, invalid('Votre accord explicite est requis pour transmettre la photo au fournisseur d’analyse.'), 422);
   const category = String(input.category ?? '');
   const contextText = String(input.context ?? '').trim().slice(0, 3000);
   const mediaId = Number(input.mediaId);
   if (!categories.has(category) || !Number.isInteger(mediaId) || mediaId < 1) return json(request, env, invalid('Catégorie ou photo invalide.'), 422);
   const asset = await env.DB.prepare(`SELECT id, object_key, mime_type, kind FROM media_assets WHERE id = ? AND owner_user_id = ?`).bind(mediaId, user.id).first();
   if (!asset || asset.kind !== 'photo' || !String(asset.mime_type).startsWith('image/')) return json(request, env, invalid('Photo de diagnostic introuvable.'), 404);
+  await env.DB.prepare(`INSERT INTO user_consents (user_id, purpose, policy_version, granted, context_json) VALUES (?, 'photo_ai_analysis', '2026-10-08-draft', 1, ?)`)
+    .bind(user.id, JSON.stringify({ mediaAssetId: mediaId, provider: 'configured vision provider' })).run();
   try {
     const result = await analyzeImage(env, category, contextText, asset);
     const saved = await env.DB.prepare(`INSERT INTO diagnoses (author_user_id, media_asset_id, category, context, status, result_json, model)

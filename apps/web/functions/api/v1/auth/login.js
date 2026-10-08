@@ -1,9 +1,11 @@
-import { body, createSession, invalid, json, options, userPayload, verifyPassword } from '../../../_shared/auth.js';
+import { body, createSession, invalid, json, options, rateLimitResponse, userPayload, verifyPassword } from '../../../_shared/auth.js';
 
 export async function onRequest(context) {
   const { request, env } = context;
   if (request.method === 'OPTIONS') return options(request, env);
   if (request.method !== 'POST') return json(request, env, invalid('Méthode non autorisée.'), 405);
+  const limited = await rateLimitResponse(env.DB, request, env, 'login', 10, 900);
+  if (limited) return limited;
   const input = await body(request);
   const identifier = String(input.identifier ?? '').trim().toLowerCase();
   const method = input.method === 'phone' ? 'phone' : 'email';

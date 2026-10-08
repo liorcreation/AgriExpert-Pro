@@ -192,12 +192,12 @@ async function processDraft(draft: OfflineDraft) {
   await saveDraft(current);
   try {
     if (current.photoBlob && !current.photoAssetId) {
-      const uploaded = await uploadMedia(current.photoBlob, 'photo', current.photoName ?? 'photo-terrain.jpg', `${current.clientRequestId}:photo`);
+      const uploaded = await uploadMedia(current.photoBlob, 'photo', current.photoName ?? 'photo-terrain.jpg', `${current.clientRequestId}:photo`, true);
       current = { ...current, photoAssetId: uploaded.data.id };
       await saveDraft(current);
     }
     if (current.voiceBlob && !current.voiceAssetId) {
-      const uploaded = await uploadMedia(current.voiceBlob, 'voice', current.voiceName ?? 'note-vocale.webm', `${current.clientRequestId}:voice`);
+      const uploaded = await uploadMedia(current.voiceBlob, 'voice', current.voiceName ?? 'note-vocale.webm', `${current.clientRequestId}:voice`, true);
       current = { ...current, voiceAssetId: uploaded.data.id };
       await saveDraft(current);
     }

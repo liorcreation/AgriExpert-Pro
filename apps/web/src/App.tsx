@@ -47,7 +47,7 @@ import { AppSidebar } from './components/shell/AppSidebar';
 import { BrandIntro } from './components/brand/BrandIntro';
 import { InstallAppButton } from './components/shell/InstallAppButton';
 import { AuthPage, type AuthSession } from './features/auth/AuthPage';
-import { getPreferences, isApiConfigured, logoutAccount, savePreferences } from './lib/api';
+import { exportAccountData, getPreferences, isApiConfigured, logoutAccount, requestAccountDeletion, savePreferences } from './lib/api';
 import type { LanguageCode, NavigationKey, ProfileSpecialty, SubscriptionPlan, UserRole } from './types/shell';
 
 const EmergencyPage = lazy(async () => ({ default: (await import('./features/emergencies/EmergencyPage')).EmergencyPage }));
@@ -273,7 +273,26 @@ function ProfilePanel({ role, profile, plan, name, onClose, onLogout, onSettings
 }
 
 function SettingsPanel({ language, voiceEnabled, darkMode, onClose, onLanguageChange, onVoiceToggle, onThemeToggle }: { language: LanguageCode; voiceEnabled: boolean; darkMode: boolean; onClose: () => void; onLanguageChange: (language: LanguageCode) => void; onVoiceToggle: () => void; onThemeToggle: () => void }) {
-  return <div className="agri-overlay-layer agri-settings-overlay" role="dialog" aria-modal="true" aria-labelledby="agri-settings-title" onMouseDown={(event) => { if (event.currentTarget === event.target) onClose(); }}><motion.section className="agri-action-modal" initial={{ opacity: 0, y: 12, scale: .98 }} animate={{ opacity: 1, y: 0, scale: 1 }}><div className="agri-floating-head"><div><strong id="agri-settings-title">Réglages et préférences</strong><small>Personnalisez votre espace terrain</small></div><button type="button" onClick={onClose} aria-label="Fermer"><X className="h-4 w-4" /></button></div><div className="agri-settings-list"><label><span><strong>Langue de l’interface</strong><small>Choisissez la langue de lecture et des repères</small></span><select value={language} onChange={(event) => onLanguageChange(event.target.value as LanguageCode)}><option value="fr">Français</option><option value="mo">Mooré</option></select></label><button type="button" onClick={onVoiceToggle}><span><strong>Assistance vocale</strong><small>Lecture des contenus compatibles</small></span><span className={voiceEnabled ? 'agri-settings-switch agri-settings-switch-on' : 'agri-settings-switch'} aria-checked={voiceEnabled} role="switch"><i /></span></button><button type="button" onClick={onThemeToggle}><span><strong>Thème sombre</strong><small>Réduire la luminosité de l’espace</small></span><span className={darkMode ? 'agri-settings-switch agri-settings-switch-on' : 'agri-settings-switch'} aria-checked={darkMode} role="switch"><i /></span></button></div><p className="agri-settings-note">Les préférences sont enregistrées sur votre compte lorsque la connexion au service est disponible.</p></motion.section></div>;
+  const [privacyMessage, setPrivacyMessage] = useState('');
+  const [privacyBusy, setPrivacyBusy] = useState(false);
+  async function downloadData() {
+    setPrivacyBusy(true); setPrivacyMessage('');
+    try {
+      const result = await exportAccountData();
+      const blob = new Blob([JSON.stringify(result.data, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob); const link = document.createElement('a'); link.href = url; link.download = `agriexpert-donnees-${new Date().toISOString().slice(0, 10)}.json`; link.click(); URL.revokeObjectURL(url);
+      setPrivacyMessage('Export JSON téléchargé. Les octets des photos et audios ne sont pas inclus ; seul leur index est fourni. Conservez ce fichier dans un endroit sûr.');
+    } catch (error) { setPrivacyMessage(error instanceof Error ? error.message : 'Export indisponible.'); }
+    finally { setPrivacyBusy(false); }
+  }
+  async function submitDeletionRequest() {
+    if (!window.confirm('Envoyer une demande de suppression de compte ? Cette demande sera examinée ; elle ne supprime pas immédiatement vos données.')) return;
+    setPrivacyBusy(true); setPrivacyMessage('');
+    try { const result = await requestAccountDeletion(); setPrivacyMessage(result.message); }
+    catch (error) { setPrivacyMessage(error instanceof Error ? error.message : 'Demande indisponible.'); }
+    finally { setPrivacyBusy(false); }
+  }
+  return <div className="agri-overlay-layer agri-settings-overlay" role="dialog" aria-modal="true" aria-labelledby="agri-settings-title" onMouseDown={(event) => { if (event.currentTarget === event.target) onClose(); }}><motion.section className="agri-action-modal" initial={{ opacity: 0, y: 12, scale: .98 }} animate={{ opacity: 1, y: 0, scale: 1 }}><div className="agri-floating-head"><div><strong id="agri-settings-title">Réglages et préférences</strong><small>Personnalisez votre espace terrain</small></div><button type="button" onClick={onClose} aria-label="Fermer"><X className="h-4 w-4" /></button></div><div className="agri-settings-list"><label><span><strong>Langue de l’interface</strong><small>Choisissez la langue de lecture et des repères</small></span><select value={language} onChange={(event) => onLanguageChange(event.target.value as LanguageCode)}><option value="fr">Français</option><option value="mo">Mooré</option></select></label><button type="button" onClick={onVoiceToggle}><span><strong>Assistance vocale</strong><small>Lecture des contenus compatibles</small></span><span className={voiceEnabled ? 'agri-settings-switch agri-settings-switch-on' : 'agri-settings-switch'} aria-checked={voiceEnabled} role="switch"><i /></span></button><button type="button" onClick={onThemeToggle}><span><strong>Thème sombre</strong><small>Réduire la luminosité de l’espace</small></span><span className={darkMode ? 'agri-settings-switch agri-settings-switch-on' : 'agri-settings-switch'} aria-checked={darkMode} role="switch"><i /></span></button></div><div className="agri-privacy-actions"><h3>Vos données personnelles</h3><p>Exportez les informations liées à votre compte ou déposez une demande de suppression. Les délais et certaines obligations de conservation doivent encore être validés juridiquement au Burkina Faso.</p><button type="button" onClick={() => void downloadData()} disabled={privacyBusy}>Télécharger mes données (JSON)</button><button type="button" onClick={() => void submitDeletionRequest()} disabled={privacyBusy}>Demander la suppression du compte</button><div><a href="/privacy.html" target="_blank" rel="noreferrer">Projet de politique de confidentialité</a><a href="/terms.html" target="_blank" rel="noreferrer">Projet de conditions d’utilisation</a></div>{privacyMessage && <p role="status">{privacyMessage}</p>}</div><p className="agri-settings-note">Les préférences sont enregistrées sur votre compte lorsque la connexion au service est disponible.</p></motion.section></div>;
 }
 
 function HelpPanel({ onClose, navigate }: { onClose: () => void; navigate: (key: NavigationKey) => void }) {
