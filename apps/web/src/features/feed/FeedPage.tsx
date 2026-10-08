@@ -53,7 +53,7 @@ const categoryLabels: Record<FeedFilter, string> = {
   apiculture: 'Apiculture',
 };
 
-export function FeedPage({ role, onBack, onNavigate }: { role: UserRole; onBack: () => void; onNavigate?: (key: NavigationKey) => void }) {
+export function FeedPage({ role, onBack, onNavigate, openComposerRequest = false, onComposerRequestHandled }: { role: UserRole; onBack: () => void; onNavigate?: (key: NavigationKey) => void; openComposerRequest?: boolean; onComposerRequestHandled?: () => void }) {
   const [filter, setFilter] = useState<FeedFilter>('all');
   const [search, setSearch] = useState('');
   const [questions, setQuestions] = useState<FeedQuestion[]>(isApiConfigured ? [] : initialQuestions);
@@ -77,6 +77,12 @@ export function FeedPage({ role, onBack, onNavigate }: { role: UserRole; onBack:
   }
 
   useEffect(() => { void refreshOfflineCount(); }, []);
+
+  useEffect(() => {
+    if (!openComposerRequest || role !== 'producer') return;
+    setComposerOpen(true);
+    onComposerRequestHandled?.();
+  }, [openComposerRequest, onComposerRequestHandled, role]);
 
   useEffect(() => {
     if (!isApiConfigured) return;
@@ -139,7 +145,7 @@ export function FeedPage({ role, onBack, onNavigate }: { role: UserRole; onBack:
   }
 
   if (role === 'expert') return <ExpertOperationsWorkspace onBack={onBack} onNavigate={onNavigate} />;
-  if (role === 'institution') return <InstitutionFeedWorkspace onBack={onBack} />;
+  if (role === 'institution') return <InstitutionFeedWorkspace onBack={onBack} onNavigate={onNavigate} />;
 
   return (
     <motion.div className="ag-feed-page" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: .38 }}>
@@ -272,11 +278,11 @@ function ExpertFeedWorkspace({ onBack }: { onBack: () => void }) {
   </motion.div>;
 }
 
-function InstitutionFeedWorkspace({ onBack }: { onBack: () => void }) {
+function InstitutionFeedWorkspace({ onBack, onNavigate }: { onBack: () => void; onNavigate?: (key: NavigationKey) => void }) {
   return <motion.div className="agri-role-page agri-institution-feed-page" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: .38 }}>
     <header className="agri-role-page-hero"><div><button type="button" className="agri-role-back" onClick={onBack}><ArrowLeft className="h-4 w-4" /> Retour à la supervision</button><div className="agri-role-eyebrow"><span /> Observatoire national · Données en direct</div><h1>Lire les signaux.<br /><em>Coordonner l’action.</em></h1><p>Un observatoire consolidé des demandes terrain pour repérer les tendances, suivre les territoires sensibles et orienter les moyens.</p></div><div className="agri-role-hero-orb agri-role-hero-orb-institution"><Landmark className="h-7 w-7" /><strong>67</strong><span>alertes à surveiller</span></div></header>
     <div className="agri-role-stat-grid"><RoleFeedStat label="Demandes nationales" value="1 284" detail="sur les 30 derniers jours" tone="green" /><RoleFeedStat label="Territoires actifs" value="12" detail="régions couvertes" tone="gold" /><RoleFeedStat label="Sujets émergents" value="8" detail="à analyser cette semaine" tone="blue" /><RoleFeedStat label="Réponses certifiées" value="92%" detail="qualité du réseau" tone="violet" /></div>
-    <div className="agri-role-work-grid"><section className="agri-role-work-card"><div className="agri-role-card-head"><div><span>Veille des conversations</span><h2>Tendances à examiner</h2></div><span className="agri-role-live"><i /> Actualisé il y a 2 min</span></div><InstitutionFeedSignal title="Maladies aviaires" detail="Centre-Nord · 18 signalements cette semaine" trend="+32%" tone="red" /><InstitutionFeedSignal title="Fertilisation du maïs" detail="Boucle du Mouhoun · 146 demandes" trend="+18%" tone="gold" /><InstitutionFeedSignal title="Qualité de l’eau" detail="Hauts-Bassins · 11 signalements" trend="+9%" tone="blue" /><button type="button" className="agri-role-card-link">Voir l’analyse territoriale <ArrowRight className="h-4 w-4" /></button></section><aside className="agri-role-work-card agri-role-work-card-dark"><div className="agri-role-card-head"><div><span>Décision recommandée</span><h2>À mettre à l’agenda</h2></div><ShieldCheck className="h-5 w-5" /></div><div className="agri-role-decision"><strong>Renforcer la veille aviaire</strong><p>3 départements présentent une hausse simultanée des demandes vétérinaires.</p><button type="button">Ouvrir le brief <ArrowUpRight className="h-4 w-4" /></button></div></aside></div>
+    <div className="agri-role-work-grid"><section className="agri-role-work-card"><div className="agri-role-card-head"><div><span>Veille des conversations</span><h2>Tendances à examiner</h2></div><span className="agri-role-live"><i /> Actualisé il y a 2 min</span></div><InstitutionFeedSignal title="Maladies aviaires" detail="Centre-Nord · 18 signalements cette semaine" trend="+32%" tone="red" /><InstitutionFeedSignal title="Fertilisation du maïs" detail="Boucle du Mouhoun · 146 demandes" trend="+18%" tone="gold" /><InstitutionFeedSignal title="Qualité de l’eau" detail="Hauts-Bassins · 11 signalements" trend="+9%" tone="blue" /><button type="button" className="agri-role-card-link" onClick={() => onNavigate?.('institutional')}>Voir l’analyse territoriale <ArrowRight className="h-4 w-4" /></button></section><aside className="agri-role-work-card agri-role-work-card-dark"><div className="agri-role-card-head"><div><span>Décision recommandée</span><h2>À mettre à l’agenda</h2></div><ShieldCheck className="h-5 w-5" /></div><div className="agri-role-decision"><strong>Renforcer la veille aviaire</strong><p>3 départements présentent une hausse simultanée des demandes vétérinaires.</p><button type="button" onClick={() => onNavigate?.('institutional')}>Ouvrir le brief <ArrowUpRight className="h-4 w-4" /></button></div></aside></div>
   </motion.div>;
 }
 

@@ -12,9 +12,12 @@ type AppSidebarProps = {
   onNavigate: (key: NavigationKey) => void;
   onCollapseToggle: () => void;
   onMobileClose: () => void;
+  onHelp: () => void;
+  onSettings: () => void;
+  onLogout: () => void;
 };
 
-export function AppSidebar({ activeKey, role, collapsed, mobileOpen, onNavigate, onCollapseToggle, onMobileClose }: AppSidebarProps) {
+export function AppSidebar({ activeKey, role, collapsed, mobileOpen, onNavigate, onCollapseToggle, onMobileClose, onHelp, onSettings, onLogout }: AppSidebarProps) {
   const compact = collapsed && !mobileOpen;
   const navigation = roleNavigation[role];
   const showInstitutional = role === 'institution' && navigation.every((item) => item.key !== 'institutional');
@@ -33,9 +36,9 @@ export function AppSidebar({ activeKey, role, collapsed, mobileOpen, onNavigate,
       <div className="agri-sidebar-footer">
         <div className="agri-sidebar-network"><span className="agri-network-mark"><Activity className="h-4 w-4" /></span><span className="agri-network-copy">{!compact && <><strong>Réseau actif</strong><small>148 experts disponibles</small></>}</span><i title="Tous les services fonctionnent" />
         </div>
-        <div className="agri-sidebar-tools"><button type="button" title="Aide" aria-label="Aide"><CircleHelp className="h-4 w-4" />{!compact && 'Centre d’aide'}</button><button type="button" title="Réglages" aria-label="Réglages"><Settings2 className="h-4 w-4" />{!compact && 'Réglages'}</button></div>
-        {!compact && <div className="agri-sidebar-account"><span className="agri-sidebar-avatar">SD</span><span><strong>Steve D.</strong><small>{roleLabels[role]} · Espace sécurisé</small></span><button type="button" className="agri-sidebar-logout" title="Se déconnecter" aria-label="Se déconnecter"><LogOut className="h-4 w-4" /></button></div>}
-        {compact && <button type="button" className="agri-sidebar-logout agri-sidebar-logout-compact" title="Se déconnecter" aria-label="Se déconnecter"><LogOut className="h-4 w-4" /></button>}
+        <div className="agri-sidebar-tools"><button type="button" title="Aide" aria-label="Aide" onClick={onHelp}><CircleHelp className="h-4 w-4" />{!compact && 'Centre d’aide'}</button><button type="button" title="Réglages" aria-label="Réglages" onClick={onSettings}><Settings2 className="h-4 w-4" />{!compact && 'Réglages'}</button></div>
+        {!compact && <div className="agri-sidebar-account"><span className="agri-sidebar-avatar">SD</span><span><strong>Steve D.</strong><small>{roleLabels[role]} · Espace sécurisé</small></span><button type="button" className="agri-sidebar-logout" title="Se déconnecter" aria-label="Se déconnecter" onClick={onLogout}><LogOut className="h-4 w-4" /></button></div>}
+        {compact && <button type="button" className="agri-sidebar-logout agri-sidebar-logout-compact" title="Se déconnecter" aria-label="Se déconnecter" onClick={onLogout}><LogOut className="h-4 w-4" /></button>}
         <button type="button" className="agri-sidebar-collapse" onClick={onCollapseToggle} aria-label={collapsed ? 'Déployer le menu' : 'Réduire le menu'} title={collapsed ? 'Déployer le menu' : 'Réduire le menu'}>{collapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />} {!compact && 'Réduire'}</button>
       </div>
     </aside>
