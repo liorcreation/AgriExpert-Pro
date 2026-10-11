@@ -1,0 +1,143 @@
+:root {
+  color-scheme: light;
+  --legal-ink: #142b22;
+  --legal-muted: #536d60;
+  --legal-brand: #0f6548;
+  --legal-leaf: #b6e876;
+  --legal-line: #dce7df;
+  --legal-paper: #fffefa;
+  --legal-canvas: #f3f6f0;
+  --legal-gold: #91620b;
+  --legal-gold-bg: #fff7df;
+  font-family: "Plus Jakarta Sans", "Avenir Next", Avenir, system-ui, sans-serif;
+  color: var(--legal-ink);
+  background: var(--legal-canvas);
+}
+
+* { box-sizing: border-box; }
+
+body {
+  min-width: 320px;
+  min-height: 100vh;
+  margin: 0;
+  background:
+    radial-gradient(ellipse at 8% 0%, rgb(16 133 88 / 9%), transparent 34rem),
+    radial-gradient(ellipse at 100% 30%, rgb(212 175 55 / 8%), transparent 27rem),
+    var(--legal-canvas);
+  color: var(--legal-ink);
+  font-size: 1rem;
+  line-height: 1.75;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+.wrap { width: min(100% - 36px, 820px); margin: 48px auto 72px; }
+
+.card {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid var(--legal-line);
+  border-radius: 28px;
+  background: var(--legal-paper);
+  padding: clamp(25px, 6vw, 58px);
+  box-shadow: 0 2px 5px rgb(16 49 35 / 4%), 0 22px 64px rgb(16 49 35 / 8%);
+}
+
+.card::before {
+  position: absolute;
+  top: -160px;
+  right: -100px;
+  width: 320px;
+  height: 320px;
+  border: 1px solid rgb(15 101 72 / 9%);
+  border-radius: 50%;
+  box-shadow: 0 0 0 34px rgb(15 101 72 / 3%), 0 0 0 76px rgb(15 101 72 / 2%);
+  content: "";
+  pointer-events: none;
+}
+
+.card > * { position: relative; z-index: 1; }
+
+.card > a:first-child {
+  display: inline-flex;
+  min-height: 44px;
+  align-items: center;
+  gap: 7px;
+  border: 1px solid var(--legal-line);
+  border-radius: 999px;
+  background: rgb(255 255 255 / 85%);
+  padding: 0 14px;
+  color: var(--legal-brand);
+  font-size: .875rem;
+  font-weight: 750;
+  text-decoration: none;
+  transition: border-color 160ms ease, background-color 160ms ease, transform 160ms ease;
+}
+
+.card > a:first-child:hover { transform: translateX(-2px); border-color: #9fc5ad; background: #f2f8f1; }
+.card > a:focus-visible { outline: 3px solid rgb(34 128 82 / 55%); outline-offset: 3px; }
+
+h1 {
+  max-width: 20ch;
+  margin: 30px 0 0;
+  font-size: clamp(2rem, 5vw, 3.25rem);
+  font-weight: 800;
+  line-height: 1.08;
+  letter-spacing: -.055em;
+  text-wrap: balance;
+}
+
+.draft {
+  border: 1px solid rgb(145 98 11 / 19%);
+  border-left: 4px solid #c99420;
+  border-radius: 14px;
+  margin: 24px 0 20px;
+  background: linear-gradient(110deg, var(--legal-gold-bg), #fffdf6);
+  padding: 16px 18px;
+  color: #614914;
+  font-size: .9375rem;
+  line-height: 1.65;
+}
+
+.draft strong { color: #744c05; }
+.card > p:not(.draft) { color: var(--legal-muted); }
+.card > p:nth-of-type(2) { border-bottom: 1px solid var(--legal-line); margin: 0; padding: 0 0 24px; font-size: .875rem; }
+
+h2 {
+  margin: 30px 0 7px;
+  color: var(--legal-ink);
+  font-size: clamp(1.125rem, 2.7vw, 1.3rem);
+  font-weight: 800;
+  line-height: 1.3;
+  letter-spacing: -.03em;
+  scroll-margin-top: 24px;
+}
+
+h2::before { display: inline-block; width: 7px; height: 7px; border-radius: 50%; margin: 0 10px 2px 0; background: var(--legal-brand); content: ""; }
+.card h2 + p { margin: 0; color: #405c4e; }
+.card > small { display: block; border-top: 1px solid var(--legal-line); margin-top: 28px; padding-top: 18px; color: var(--legal-muted); font-size: .8125rem; line-height: 1.6; }
+
+a { color: var(--legal-brand); text-underline-offset: 3px; }
+a:hover { color: #08452f; }
+
+@media (max-width: 600px) {
+  .wrap { width: min(100% - 20px, 820px); margin: 12px auto 30px; }
+  .card { border-radius: 22px; padding: 21px 18px 25px; }
+  h1 { margin-top: 24px; }
+  .draft { margin-top: 19px; padding: 13px 14px; font-size: .875rem; }
+  h2 { margin-top: 25px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
+}
+
+@media print {
+  :root, body { background: #fff; }
+  .wrap { width: 100%; margin: 0; }
+  .card { border: 0; border-radius: 0; padding: 0; box-shadow: none; }
+  .card::before, .card > a:first-child { display: none; }
+  h1 { margin-top: 0; }
+  h2 { break-after: avoid; }
+  .card h2 + p { break-inside: avoid; }
+}

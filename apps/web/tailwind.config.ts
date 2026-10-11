@@ -17,6 +17,38 @@ const config: Config = {
     },
     extend: {
       colors: {
+        brand: Object.fromEntries(
+          [50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950].map((step) => [
+            step,
+            `rgb(var(--ae-brand-${step}) / <alpha-value>)`,
+          ]),
+        ),
+        leaf: Object.fromEntries(
+          [50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950].map((step) => [
+            step,
+            `rgb(var(--ae-leaf-${step}) / <alpha-value>)`,
+          ]),
+        ),
+        soil: Object.fromEntries(
+          [50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950].map((step) => [
+            step,
+            `rgb(var(--ae-soil-${step}) / <alpha-value>)`,
+          ]),
+        ),
+        field: {
+          canvas: 'rgb(var(--ae-canvas) / <alpha-value>)',
+          surface: 'rgb(var(--ae-surface) / <alpha-value>)',
+          raised: 'rgb(var(--ae-surface-raised) / <alpha-value>)',
+          ink: 'rgb(var(--ae-ink) / <alpha-value>)',
+          muted: 'rgb(var(--ae-muted) / <alpha-value>)',
+          line: 'rgb(var(--ae-line) / <alpha-value>)',
+        },
+        status: {
+          success: 'rgb(var(--ae-success) / <alpha-value>)',
+          warning: 'rgb(var(--ae-warning) / <alpha-value>)',
+          danger: 'rgb(var(--ae-danger) / <alpha-value>)',
+          info: 'rgb(var(--ae-info) / <alpha-value>)',
+        },
         territory: {
           950: '#071D16',
           900: '#0F3D2E',
@@ -76,8 +108,9 @@ const config: Config = {
         },
       },
       fontFamily: {
-        sans: ['"Plus Jakarta Sans"', 'Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'],
-        display: ['"Plus Jakarta Sans"', 'Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+        sans: ['"Plus Jakarta Sans"', 'Aptos', '"Segoe UI Variable"', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+        display: ['"Plus Jakarta Sans"', 'Aptos Display', '"Segoe UI Variable"', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+        mono: ['"DM Mono"', '"Cascadia Code"', 'ui-monospace', 'monospace'],
       },
       fontSize: {
         'display-xl': ['3.5rem', { lineHeight: '1.05', letterSpacing: '-0.04em', fontWeight: '700' }],
@@ -90,12 +123,15 @@ const config: Config = {
         caption: ['0.75rem', { lineHeight: '1.4', letterSpacing: '0.02em' }],
       },
       boxShadow: {
-        soft: '0 10px 40px rgba(15, 61, 46, 0.08)',
-        'soft-dark': '0 14px 45px rgba(0, 0, 0, 0.24)',
-        glass: '0 12px 36px rgba(15, 61, 46, 0.12)',
+        soft: 'var(--ae-shadow-2)',
+        'soft-dark': 'var(--ae-shadow-3)',
+        glass: 'var(--ae-shadow-glass)',
         emergency: '0 0 0 4px rgba(240, 68, 56, 0.14), 0 12px 30px rgba(217, 45, 32, 0.28)',
       },
       borderRadius: {
+        field: 'var(--ae-radius-field)',
+        surface: 'var(--ae-radius-surface)',
+        panel: 'var(--ae-radius-panel)',
         card: '1.25rem',
         'card-lg': '1.75rem',
         control: '0.875rem',

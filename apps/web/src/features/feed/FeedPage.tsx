@@ -9,7 +9,7 @@ import type { UserRole } from '../../types/shell';
 import type { NavigationKey } from '../../types/shell';
 import { AudioRecorder } from '../../components/emergencies/AudioRecorder';
 import { countPendingOfflineDrafts, queueOfflineDraft, syncOfflineDrafts } from '../../lib/offlineQueue';
-import { answerQuestion, getExpertCase, getExpertWorkspace, isApiConfigured, listExpertColleagues, listQuestions, mediaUrl, publishQuestion, reactToQuestion, updateEmergencyAvailability, updateExpertCase, uploadMedia, type ExpertCase, type ExpertWorkspaceData, type PersistedQuestion } from '../../lib/api';
+import { getExpertCase, getExpertWorkspace, getInstitutionalDashboard, isApiConfigured, listExpertColleagues, listQuestions, mediaUrl, publishQuestion, reactToQuestion, updateEmergencyAvailability, updateExpertCase, uploadMedia, type ExpertCase, type ExpertWorkspaceData, type InstitutionalDashboardData, type PersistedQuestion } from '../../lib/api';
 
 type FeedFilter = 'all' | FeedCategory;
 
@@ -57,6 +57,8 @@ export function FeedPage({ role, onBack, onNavigate, openComposerRequest = false
   const [filter, setFilter] = useState<FeedFilter>('all');
   const [search, setSearch] = useState('');
   const [questions, setQuestions] = useState<FeedQuestion[]>(isApiConfigured ? [] : initialQuestions);
+  const [feedLoading, setFeedLoading] = useState(isApiConfigured);
+  const [feedError, setFeedError] = useState('');
   const [composerOpen, setComposerOpen] = useState(false);
   const [sortByAnswers, setSortByAnswers] = useState(false);
   const [isOnline, setIsOnline] = useState(() => typeof navigator === 'undefined' ? true : navigator.onLine);
@@ -68,11 +70,15 @@ export function FeedPage({ role, onBack, onNavigate, openComposerRequest = false
 
   async function refreshQuestions() {
     if (!isApiConfigured) return;
+    setFeedLoading(true);
+    setFeedError('');
     try {
       const response = await listQuestions();
       setQuestions(response.data.map(mapPersistedQuestion));
-    } catch {
-      // Keep the current feed visible when a transient network error occurs.
+    } catch (reason: unknown) {
+      setFeedError(reason instanceof Error ? reason.message : 'Le fil est momentanément indisponible.');
+    } finally {
+      setFeedLoading(false);
     }
   }
 
@@ -115,6 +121,12 @@ export function FeedPage({ role, onBack, onNavigate, openComposerRequest = false
       })
       .sort((left, right) => sortByAnswers ? right.answerCount - left.answerCount : questions.indexOf(left) - questions.indexOf(right));
   }, [filter, questions, search, sortByAnswers]);
+  const totalAnswers = questions.reduce((total, question) => total + question.answerCount, 0);
+  const questionsWithMedia = questions.filter((question) => question.hasPhoto || question.hasVoice).length;
+  const categoryTotals = (Object.keys(feedCategoryLabels) as FeedCategory[]).map((category) => ({
+    category,
+    count: questions.filter((question) => question.category === category).length,
+  }));
 
   async function addQuestion(payload: { title: string; body: string; category: FeedCategory; hasVoice: boolean; hasPhoto: boolean; photo?: File; voice?: Blob; photoName?: string; photoPreview?: string; photoAssetId?: number; voiceAssetId?: number; voiceTranscript?: string; diagnosisId?: number }) {
     const clientRequestId = `question-${crypto.randomUUID()}`;
@@ -157,16 +169,16 @@ export function FeedPage({ role, onBack, onNavigate, openComposerRequest = false
           <p className="ag-feed-lead">Un fil vivant de questions, d’expériences et de réponses vérifiées pour décider plus sereinement, parcelle après parcelle.</p>
         </div>
         <div className="ag-feed-hero-actions">
-          <div className="ag-feed-online-card"><span className="ag-feed-online-orbit"><span /></span><div><strong>148 experts</strong><small>disponibles maintenant</small></div><ArrowUpRight className="h-4 w-4" /></div>
+          <div className="ag-feed-online-card"><span className="ag-feed-online-orbit"><span /></span><div><strong>{feedLoading ? 'Fil en cours…' : `${questions.length} discussion${questions.length > 1 ? 's' : ''}`}</strong><small>dans le réseau chargé</small></div><ArrowUpRight className="h-4 w-4" /></div>
           <button type="button" className="ag-feed-primary" onClick={openComposer}><Plus className="h-4 w-4" /> Poser une question</button>
         </div>
       </header>
 
       <div className="ag-feed-signal-strip" aria-label="Indicateurs du réseau">
-        <Signal icon={<MessageCircle className="h-4 w-4" />} label="Réponses aujourd’hui" value="24" note="+18% ce mois-ci" tone="green" />
-        <Signal icon={<Clock3 className="h-4 w-4" />} label="Temps moyen" value="18 min" note="12% plus rapide" tone="gold" />
-        <Signal icon={<ShieldCheck className="h-4 w-4" />} label="Réponses certifiées" value="92%" note="sur les 30 derniers jours" tone="blue" />
-        <div className="ag-feed-network-state"><span /><div><strong>Réseau actif</strong><small>Les spécialistes de votre zone sont en ligne</small></div></div>
+        <Signal icon={<MessageCircle className="h-4 w-4" />} label="Discussions" value={feedLoading ? '—' : String(questions.length)} note={feedLoading ? 'chargement du fil…' : 'dans le fil chargé'} tone="green" />
+        <Signal icon={<Clock3 className="h-4 w-4" />} label="Réponses reçues" value={feedLoading ? '—' : String(totalAnswers)} note={feedLoading ? 'chargement du fil…' : 'sur ces discussions'} tone="gold" />
+        <Signal icon={<ShieldCheck className="h-4 w-4" />} label="Avec photo ou voix" value={feedLoading ? '—' : String(questionsWithMedia)} note={feedLoading ? 'chargement du fil…' : 'contexte partagé par le terrain'} tone="blue" />
+        <div className="ag-feed-network-state"><span /><div><strong>{isOnline ? 'Connexion disponible' : 'Mode hors-ligne'}</strong><small>{isOnline ? 'Le fil peut être actualisé' : 'Vos brouillons restent sur cet appareil'}</small></div></div>
       </div>
 
       <div className={isOnline ? 'ag-feed-sync-banner ag-feed-sync-online' : 'ag-feed-sync-banner ag-feed-sync-offline'}><span /><strong>{isOnline ? 'Réseau disponible' : 'Mode hors-ligne'}</strong><small>{isOnline ? (offlineCount ? `${offlineCount} brouillon(s) synchronisé(s)` : 'Vos questions seront synchronisées automatiquement') : 'Questions et photos enregistrées sur cet appareil'}</small>{offlineCount > 0 && <span className="ag-feed-sync-count">{offlineCount}</span>}</div>
@@ -183,12 +195,12 @@ export function FeedPage({ role, onBack, onNavigate, openComposerRequest = false
           </section>
 
           <div className="ag-feed-result-row"><p><strong>{visibleQuestions.length}</strong> discussion{visibleQuestions.length > 1 ? 's' : ''} dans votre réseau</p><button type="button" className="ag-feed-sort" onClick={() => setSortByAnswers((current) => !current)}><TrendingUp className="h-3.5 w-3.5" /> {sortByAnswers ? 'Plus de réponses' : 'Plus récentes'} <ArrowUpRight className="h-3.5 w-3.5" /></button></div>
-          <div className="ag-feed-question-list">{visibleQuestions.length > 0 ? visibleQuestions.map((question, index) => <QuestionCard key={question.id} question={question} index={index} onReply={openComposer} onReaction={async (reacted) => { if (!isApiConfigured || !/^\d+$/.test(question.id)) return; const result = await reactToQuestion(question.id, reacted); setQuestions((current) => current.map((item) => item.id === question.id ? { ...item, reacted, usefulCount: result.data.useful_count } : item)); }} />) : <EmptyFeed onReset={() => { setSearch(''); setFilter('all'); }} />}</div>
+          <div className="ag-feed-question-list" aria-busy={feedLoading}>{feedLoading ? <FeedLoadingState /> : feedError && questions.length === 0 ? <FeedErrorState message={feedError} onRetry={() => void refreshQuestions()} /> : visibleQuestions.length > 0 ? visibleQuestions.map((question, index) => <QuestionCard key={question.id} question={question} index={index} onReply={openComposer} onReaction={async (reacted) => { if (!isApiConfigured || !/^\d+$/.test(question.id)) return; const result = await reactToQuestion(question.id, reacted); setQuestions((current) => current.map((item) => item.id === question.id ? { ...item, reacted, usefulCount: result.data.useful_count } : item)); }} />) : <EmptyFeed isFiltered={questions.length > 0} onReset={() => { setSearch(''); setFilter('all'); }} onCreate={openComposer} />}</div>
         </main>
 
         <aside className="ag-feed-aside">
-          <section className="ag-feed-live-card"><div className="ag-feed-aside-kicker"><Sparkles className="h-3.5 w-3.5" /> En ce moment</div><h2>Le réseau est en mouvement.</h2><p>Des spécialistes répondent aux producteurs partout au Burkina Faso.</p><div className="ag-feed-avatars"><span>AK</span><span>AT</span><span>BO</span><span>+145</span></div><div className="ag-feed-live-foot"><span><i /> 148 experts disponibles</span><button type="button" onClick={openComposer}>Demander un avis <ArrowRight className="h-3.5 w-3.5" /></button></div></section>
-          <section className="ag-feed-side-card"><div className="ag-feed-side-title"><span className="ag-feed-side-icon ag-feed-side-icon-gold"><Flame className="h-4 w-4" /></span><div><h2>Sujets populaires</h2><p>Les conversations de la semaine</p></div></div><div className="ag-feed-topic-list"><PopularTopic label="Fertilisation du maïs" count="38 discussions" onClick={() => { setSearch('maïs'); setFilter('all'); }} /><PopularTopic label="Maladies des volailles" count="24 discussions" onClick={() => { setSearch('volailles'); setFilter('all'); }} /><PopularTopic label="Gestion de l’eau" count="17 discussions" onClick={() => { setSearch('eau'); setFilter('all'); }} /></div></section>
+          <section className="ag-feed-live-card"><div className="ag-feed-aside-kicker"><Sparkles className="h-3.5 w-3.5" /> Votre réseau</div><h2>Une question de terrain ?</h2><p>Décrivez votre situation et partagez une photo ou une note vocale pour aider les spécialistes à vous répondre.</p><div className="ag-feed-live-foot"><span><i /> {feedLoading ? 'Mise à jour du fil…' : `${questions.length} discussion${questions.length > 1 ? 's' : ''} dans le fil`}</span><button type="button" onClick={openComposer}>Demander un avis <ArrowRight className="h-3.5 w-3.5" /></button></div></section>
+          <section className="ag-feed-side-card"><div className="ag-feed-side-title"><span className="ag-feed-side-icon ag-feed-side-icon-gold"><Flame className="h-4 w-4" /></span><div><h2>Explorer par filière</h2><p>Volume de discussions chargées</p></div></div><div className="ag-feed-topic-list">{categoryTotals.map(({ category, count }) => <PopularTopic key={category} label={categoryLabels[category]} count={feedLoading ? '—' : `${count} discussion${count > 1 ? 's' : ''}`} onClick={() => { setSearch(''); setFilter(category); }} />)}</div></section>
           <section className="ag-feed-side-card ag-feed-tips-card"><div className="ag-feed-side-title"><span className="ag-feed-side-icon ag-feed-side-icon-green"><HelpCircle className="h-4 w-4" /></span><div><h2>Une question utile</h2><p>pour une réponse précise</p></div></div><ol><li><b>01</b><span>Le lieu et la date d’apparition.</span></li><li><b>02</b><span>Une photo ou une note vocale.</span></li><li><b>03</b><span>Ce que vous avez déjà essayé.</span></li></ol><div className="ag-feed-voice-note"><Mic className="h-4 w-4" /><span>Vous pouvez parler en français ou en Mooré.</span></div></section>
         </aside>
       </div>
@@ -270,42 +282,33 @@ function ExpertOperationsWorkspace({ onBack, onNavigate }: { onBack: () => void;
   </motion.div>;
 }
 
-function ExpertFeedWorkspace({ onBack }: { onBack: () => void }) {
-  return <motion.div className="agri-role-page agri-expert-feed-page" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: .38 }}>
-    <header className="agri-role-page-hero"><div><button type="button" className="agri-role-back" onClick={onBack}><ArrowLeft className="h-4 w-4" /> Retour à mon espace expert</button><div className="agri-role-eyebrow"><span /> File d’expertise · Réseau actif</div><h1>Les producteurs attendent.<br /><em>Votre expertise agit.</em></h1><p>Qualifier les demandes, prioriser les urgences et apporter une réponse certifiée depuis un seul espace de travail.</p></div><div className="agri-role-hero-orb agri-role-hero-orb-expert"><BriefcaseBusiness className="h-7 w-7" /><strong>12</strong><span>demandes à traiter</span></div></header>
-    <div className="agri-role-stat-grid"><RoleFeedStat label="À qualifier" value="12" detail="4 prioritaires" tone="green" /><RoleFeedStat label="Réponses cette semaine" value="38" detail="+18% vs. semaine passée" tone="gold" /><RoleFeedStat label="Délai moyen" value="18 min" detail="objectif réseau · 30 min" tone="blue" /><RoleFeedStat label="Satisfaction" value="4,9/5" detail="74 avis producteurs" tone="violet" /></div><ExpertAnswerQueue /><section className="agri-diagnostic-card"><div className="agri-diagnostic-copy"><span className="agri-role-eyebrow"><span /> Vision terrain · Diagnostic assisté</span><h2>Une photo, des indices exploitables.</h2><p>Les producteurs peuvent joindre une image HD de la plante ou de l’animal. Qualifiez les symptômes, annotez l’observation et envoyez votre première hypothèse.</p><div className="agri-diagnostic-tags"><span>HD sécurisé</span><span>Annotation expert</span><span>Historique du cas</span></div></div><div className="agri-diagnostic-visual"><div className="agri-diagnostic-leaf">◒</div><span>Photo reçue · Maïs · 4,2 Mo</span><b>À analyser</b></div></section>
-    <div className="agri-role-work-grid"><section className="agri-role-work-card"><div className="agri-role-card-head"><div><span>À traiter maintenant</span><h2>Votre file de qualification</h2></div><span className="agri-role-live"><i /> En direct</span></div><ExpertFeedQueue title="Feuilles de maïs jaunissantes" detail="Awa Traoré · Agriculture · il y a 9 min" tag="Prioritaire" tone="red" /><ExpertFeedQueue title="Suspicion de maladie aviaire" detail="Moussa K. · Élevage · il y a 24 min" tag="Nouveau" tone="gold" /><ExpertFeedQueue title="Qualité de l’eau du bassin" detail="Issa O. · Pisciculture · il y a 41 min" tag="À qualifier" tone="blue" /><button type="button" className="agri-role-card-link">Ouvrir toute la file <ArrowRight className="h-4 w-4" /></button></section><aside className="agri-role-work-card agri-role-work-card-dark"><div className="agri-role-card-head"><div><span>Votre permanence</span><h2>Les rendez-vous du jour</h2></div><Radio className="h-5 w-5" /></div><div className="agri-role-agenda-line"><strong>09:30</strong><div><b>Appel avec Karim Sawadogo</b><small>Suivi parcelle · Ouagadougou</small></div><CheckCircle2 className="h-4 w-4" /></div><div className="agri-role-agenda-line"><strong>11:00</strong><div><b>Visite d’exploitation</b><small>Élevage · Koubri</small></div><Clock3 className="h-4 w-4" /></div><div className="agri-role-agenda-line"><strong>15:30</strong><div><b>Permanence réseau</b><small>Questions ouvertes · En ligne</small></div><Radio className="h-4 w-4" /></div></aside></div>
-  </motion.div>;
-}
-
 function InstitutionFeedWorkspace({ onBack, onNavigate }: { onBack: () => void; onNavigate?: (key: NavigationKey) => void }) {
-  return <motion.div className="agri-role-page agri-institution-feed-page" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: .38 }}>
-    <header className="agri-role-page-hero"><div><button type="button" className="agri-role-back" onClick={onBack}><ArrowLeft className="h-4 w-4" /> Retour à la supervision</button><div className="agri-role-eyebrow"><span /> Observatoire national · Données en direct</div><h1>Lire les signaux.<br /><em>Coordonner l’action.</em></h1><p>Un observatoire consolidé des demandes terrain pour repérer les tendances, suivre les territoires sensibles et orienter les moyens.</p></div><div className="agri-role-hero-orb agri-role-hero-orb-institution"><Landmark className="h-7 w-7" /><strong>67</strong><span>alertes à surveiller</span></div></header>
-    <div className="agri-role-stat-grid"><RoleFeedStat label="Demandes nationales" value="1 284" detail="sur les 30 derniers jours" tone="green" /><RoleFeedStat label="Territoires actifs" value="12" detail="régions couvertes" tone="gold" /><RoleFeedStat label="Sujets émergents" value="8" detail="à analyser cette semaine" tone="blue" /><RoleFeedStat label="Réponses certifiées" value="92%" detail="qualité du réseau" tone="violet" /></div>
-    <div className="agri-role-work-grid"><section className="agri-role-work-card"><div className="agri-role-card-head"><div><span>Veille des conversations</span><h2>Tendances à examiner</h2></div><span className="agri-role-live"><i /> Actualisé il y a 2 min</span></div><InstitutionFeedSignal title="Maladies aviaires" detail="Centre-Nord · 18 signalements cette semaine" trend="+32%" tone="red" /><InstitutionFeedSignal title="Fertilisation du maïs" detail="Boucle du Mouhoun · 146 demandes" trend="+18%" tone="gold" /><InstitutionFeedSignal title="Qualité de l’eau" detail="Hauts-Bassins · 11 signalements" trend="+9%" tone="blue" /><button type="button" className="agri-role-card-link" onClick={() => onNavigate?.('institutional')}>Voir l’analyse territoriale <ArrowRight className="h-4 w-4" /></button></section><aside className="agri-role-work-card agri-role-work-card-dark"><div className="agri-role-card-head"><div><span>Décision recommandée</span><h2>À mettre à l’agenda</h2></div><ShieldCheck className="h-5 w-5" /></div><div className="agri-role-decision"><strong>Renforcer la veille aviaire</strong><p>3 départements présentent une hausse simultanée des demandes vétérinaires.</p><button type="button" onClick={() => onNavigate?.('institutional')}>Ouvrir le brief <ArrowUpRight className="h-4 w-4" /></button></div></aside></div>
-  </motion.div>;
-}
-
-function ExpertAnswerQueue() {
-  const [questions, setQuestions] = useState<PersistedQuestion[]>([]);
-  const [drafts, setDrafts] = useState<Record<string, string>>({});
-  const [busy, setBusy] = useState<string | null>(null);
-  useEffect(() => { if (isApiConfigured) void listQuestions().then((response) => setQuestions(response.data.filter((question) => question.status === 'open'))).catch(() => undefined); }, []);
-  async function submit(questionId: number) {
-    const body = drafts[String(questionId)]?.trim();
-    if (!body) return;
-    setBusy(String(questionId));
-    try { await answerQuestion(String(questionId), body); setQuestions((current) => current.filter((question) => question.id !== questionId)); setDrafts((current) => ({ ...current, [String(questionId)]: '' })); } finally { setBusy(null); }
+  const [dashboard, setDashboard] = useState<InstitutionalDashboardData | null>(null);
+  const [loading, setLoading] = useState(isApiConfigured);
+  const [error, setError] = useState('');
+  async function refresh() {
+    if (!isApiConfigured) { setLoading(false); setError('Le service de données institutionnelles n’est pas configuré ici.'); return; }
+    setLoading(true); setError('');
+    try { const response = await getInstitutionalDashboard('7d', 'national'); setDashboard(response.data); }
+    catch (reason: unknown) { setError(reason instanceof Error ? reason.message : 'Les données de supervision sont momentanément indisponibles.'); }
+    finally { setLoading(false); }
   }
-  return <section className="agri-role-work-card agri-expert-answer-queue"><div className="agri-role-card-head"><div><span>Persistance active · D1</span><h2>Répondre aux demandes ouvertes</h2></div><span className="agri-role-live"><i /> {questions.length} à traiter</span></div>{questions.length ? questions.slice(0, 3).map((question) => <div className="agri-expert-answer-item" key={question.id}><div><strong>{question.title}</strong><small>{question.category} · {question.author_name} · {question.created_at}</small></div><textarea value={drafts[String(question.id)] ?? ''} onChange={(event) => setDrafts((current) => ({ ...current, [String(question.id)]: event.target.value }))} placeholder="Votre réponse terrain certifiée…" /><button type="button" className="agri-role-card-link" disabled={busy === String(question.id)} onClick={() => void submit(question.id)}>{busy === String(question.id) ? 'Envoi…' : 'Publier la réponse'} <ArrowRight className="h-4 w-4" /></button></div>) : <p className="agri-role-empty">Aucune demande ouverte pour le moment.</p>}</section>;
+  useEffect(() => { void refresh(); }, []);
+  const alerts = dashboard?.alerts ?? [];
+  const lastUpdated = dashboard ? new Date(dashboard.lastUpdated).toLocaleString('fr-FR', { dateStyle: 'medium', timeStyle: 'short' }) : '';
+  const alertTone = (level: 'critical' | 'high' | 'medium') => level === 'critical' ? 'red' : level === 'high' ? 'gold' : 'blue';
+  return <motion.div className="agri-role-page agri-institution-feed-page" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: .38 }}>
+    <header className="agri-role-page-hero"><div><button type="button" className="agri-role-back" onClick={onBack}><ArrowLeft className="h-4 w-4" /> Retour à la supervision</button><div className="agri-role-eyebrow"><span /> Observatoire · {dashboard?.scope.institutionName ?? 'Périmètre autorisé'}</div><h1>Lire les signaux.<br /><em>Coordonner l’action.</em></h1><p>Indicateurs agrégés de votre périmètre institutionnel, actualisés depuis les données du service.</p></div><div className="agri-role-hero-orb agri-role-hero-orb-institution"><Landmark className="h-7 w-7" /><strong>{loading ? '…' : dashboard?.kpis.activeAlerts ?? '—'}</strong><span>alertes actives · 7 jours</span></div></header>
+    {error && <div className="agri-expert-error" role="alert">{error}</div>}
+    <div className="agri-role-stat-grid"><RoleFeedStat label="Demandes reçues" value={loading ? '—' : String(dashboard?.kpis.totalRequests ?? 0)} detail="sur les 7 derniers jours" tone="green" /><RoleFeedStat label="Alertes actives" value={loading ? '—' : String(dashboard?.kpis.activeAlerts ?? 0)} detail="signalements SOS ouverts ou attribués" tone="gold" /><RoleFeedStat label="Experts disponibles" value={loading ? '—' : String(dashboard?.kpis.availableExperts ?? 0)} detail="présence récente confirmée" tone="blue" /><RoleFeedStat label="Taux de résolution" value={loading ? '—' : `${dashboard?.kpis.resolutionRate ?? 0}%`} detail="demandes closes ou suivies" tone="violet" /></div>
+    <div className="agri-role-work-grid"><section className="agri-role-work-card"><div className="agri-role-card-head"><div><span>Veille des conversations · données agrégées</span><h2>Alertes à examiner</h2>{lastUpdated && <small className="agri-institutional-source-note">Actualisé le {lastUpdated} · 7 derniers jours</small>}</div><button type="button" className="agri-role-card-link" onClick={() => void refresh()} disabled={loading}><Radio className="h-4 w-4" /> {loading ? 'Actualisation…' : 'Actualiser'}</button></div>
+      {loading ? <div className="agri-role-empty" role="status"><LoaderCircle className="h-6 w-6 animate-spin" /><strong>Chargement des indicateurs</strong><span>Lecture des données agrégées autorisées pour votre institution.</span></div> : alerts.length ? alerts.slice(0, 6).map((alert, index) => <InstitutionFeedSignal key={`${alert.title}-${alert.region}-${index}`} title={alert.title} detail={`${alert.region} · ${alert.count} · ${alert.time}`} trend={alert.level === 'critical' ? 'Critique' : alert.level === 'high' ? 'Prioritaire' : 'Suivi'} tone={alertTone(alert.level)} />) : <div className="agri-role-empty"><CheckCircle2 className="h-6 w-6" /><strong>Aucune alerte à afficher</strong><span>Aucune alerte agrégée n’est disponible pour cette période et ce périmètre.</span></div>}
+      <button type="button" className="agri-role-card-link" onClick={() => onNavigate?.('institutional')}>Ouvrir le cockpit institutionnel <ArrowRight className="h-4 w-4" /></button></section><aside className="agri-role-work-card agri-role-work-card-dark"><div className="agri-role-card-head"><div><span>Périmètre de consultation</span><h2>{dashboard?.scope.institutionName ?? 'Données protégées'}</h2></div><ShieldCheck className="h-5 w-5" /></div><div className="agri-role-decision"><strong>Lecture agrégée et limitée</strong><p>Les données individuelles et les groupes sous le seuil de confidentialité ne sont pas exposés dans cet espace.</p><button type="button" onClick={() => onNavigate?.('institutional')}>Consulter les filtres et rapports <ArrowUpRight className="h-4 w-4" /></button></div></aside></div>
+  </motion.div>;
 }
 
 function RoleFeedStat({ label, value, detail, tone }: { label: string; value: string; detail: string; tone: string }) {
   return <div className={`agri-role-stat agri-role-stat-${tone}`}><small>{label}</small><strong>{value}</strong><span>{detail}</span></div>;
-}
-
-function ExpertFeedQueue({ title, detail, tag, tone }: { title: string; detail: string; tag: string; tone: string }) {
-  return <button type="button" className={`agri-role-queue agri-role-queue-${tone}`}><span><i />{tag}</span><div><strong>{title}</strong><small>{detail}</small></div><ArrowUpRight className="h-4 w-4" /></button>;
 }
 
 function InstitutionFeedSignal({ title, detail, trend, tone }: { title: string; detail: string; trend: string; tone: string }) {
@@ -324,6 +327,14 @@ function PopularTopic({ label, count, onClick }: { label: string; count: string;
   return <button type="button" onClick={onClick} className="ag-feed-topic"><span><i />{label}</span><small>{count}<ArrowUpRight className="h-3 w-3" /></small></button>;
 }
 
-function EmptyFeed({ onReset }: { onReset: () => void }) {
-  return <div className="ag-feed-empty"><span><Search className="h-5 w-5" /></span><h2>Aucune discussion trouvée</h2><p>Essayez un autre mot-clé ou revenez à l’ensemble du réseau.</p><button type="button" onClick={onReset}>Réinitialiser les filtres <ArrowRight className="h-3.5 w-3.5" /></button></div>;
+function EmptyFeed({ isFiltered, onReset, onCreate }: { isFiltered: boolean; onReset: () => void; onCreate: () => void }) {
+  return <div className="ag-feed-empty"><span>{isFiltered ? <Search className="h-5 w-5" /> : <MessageCircle className="h-5 w-5" />}</span><h2>{isFiltered ? 'Aucune discussion trouvée' : 'Le fil attend votre première question'}</h2><p>{isFiltered ? 'Essayez un autre mot-clé ou revenez à l’ensemble du réseau.' : 'Décrivez votre situation pour recevoir un conseil adapté de la communauté.'}</p><button type="button" onClick={isFiltered ? onReset : onCreate}>{isFiltered ? 'Réinitialiser les filtres' : 'Poser une question'} <ArrowRight className="h-3.5 w-3.5" /></button></div>;
+}
+
+function FeedLoadingState() {
+  return <div className="ag-feed-loading" role="status" aria-label="Chargement des discussions"><span className="ag-feed-loading-skeleton ag-feed-loading-meta" /><span className="ag-feed-loading-skeleton ag-feed-loading-title" /><span className="ag-feed-loading-skeleton ag-feed-loading-copy" /><span className="ag-feed-loading-skeleton ag-feed-loading-copy ag-feed-loading-copy-short" /><span className="ag-feed-loading-skeleton ag-feed-loading-foot" /><span className="sr-only">Chargement des discussions…</span></div>;
+}
+
+function FeedErrorState({ message, onRetry }: { message: string; onRetry: () => void }) {
+  return <div className="ag-feed-empty ag-feed-error-state" role="alert"><span><AlertTriangle className="h-5 w-5" /></span><h2>Le fil n’a pas pu être chargé</h2><p>{message}</p><button type="button" onClick={onRetry}>Réessayer <ArrowRight className="h-3.5 w-3.5" /></button></div>;
 }

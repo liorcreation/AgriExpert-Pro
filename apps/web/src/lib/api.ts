@@ -55,6 +55,18 @@ export function logoutAccount() {
   return request<{ message: string }>('/auth/logout', { method: 'POST' });
 }
 
+export type ProducerOverviewData = {
+  period: '7d' | '30d';
+  kpis: { totalQuestions: number; answeredQuestions: number; openQuestions: number; withMedia: number; answersReceived: number; activeEmergencies: number };
+  trend: Array<{ day: string; requests: number; answered: number }>;
+  latestQuestions: Array<{ id: number; title: string; category: string; status: 'open' | 'answered' | 'closed'; created_at: string; has_photo: number; has_voice: number; answer_count: number }>;
+  lastUpdated: string;
+};
+
+export function getProducerOverview(period: '7d' | '30d' = '7d') {
+  return request<{ data: ProducerOverviewData }>(`/overview?period=${period}`);
+}
+
 export function loginWithGoogle(credential: string, profile: { role?: string; profile?: string; plan?: string }) {
   return request<AuthResponse>('/auth/google', { method: 'POST', body: JSON.stringify({ credential, ...profile }) });
 }

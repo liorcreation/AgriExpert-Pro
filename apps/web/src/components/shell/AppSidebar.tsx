@@ -7,6 +7,8 @@ import { BrandLogo } from '../brand/BrandLogo';
 type AppSidebarProps = {
   activeKey: NavigationKey;
   role: UserRole;
+  name: string;
+  initials: string;
   collapsed: boolean;
   mobileOpen: boolean;
   onNavigate: (key: NavigationKey) => void;
@@ -17,13 +19,13 @@ type AppSidebarProps = {
   onLogout: () => void;
 };
 
-export function AppSidebar({ activeKey, role, collapsed, mobileOpen, onNavigate, onCollapseToggle, onMobileClose, onHelp, onSettings, onLogout }: AppSidebarProps) {
+export function AppSidebar({ activeKey, role, name, initials, collapsed, mobileOpen, onNavigate, onCollapseToggle, onMobileClose, onHelp, onSettings, onLogout }: AppSidebarProps) {
   const compact = collapsed && !mobileOpen;
   const navigation = roleNavigation[role];
   const showInstitutional = role === 'institution' && navigation.every((item) => item.key !== 'institutional');
   return <>
     <AnimatePresence>{mobileOpen && <motion.button type="button" className="agri-mobile-scrim" aria-label="Fermer le menu" onClick={onMobileClose} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} />}</AnimatePresence>
-    <aside className={['agri-sidebar', compact ? 'agri-sidebar-collapsed' : '', mobileOpen ? 'agri-sidebar-open' : ''].join(' ')} aria-label="Navigation principale">
+    <aside id="agri-sidebar" className={['agri-sidebar', compact ? 'agri-sidebar-collapsed' : '', mobileOpen ? 'agri-sidebar-open' : ''].join(' ')} aria-label="Navigation principale">
       <div className="agri-sidebar-top">
         <div className="agri-brand"><BrandLogo showName={!compact} descriptor="CONSEIL · TERRITOIRES" /><button type="button" className="agri-sidebar-close" onClick={onMobileClose} aria-label="Fermer le menu"><X className="h-4 w-4" /></button></div>
         {!compact && <div className="agri-sidebar-territory"><span className="agri-territory-icon"><MapPin className="h-4 w-4" /></span><span className="agri-territory-copy"><small>VOTRE TERRITOIRE</small><strong>Ouagadougou <i>·</i> Burkina Faso</strong></span><span className="agri-territory-pulse" aria-label="Zone active" /> </div>}
@@ -34,10 +36,10 @@ export function AppSidebar({ activeKey, role, collapsed, mobileOpen, onNavigate,
         {showInstitutional && <SidebarGroup label="Pilotage national" collapsed={compact}>{institutionalNavigation.map((item, index) => <SidebarItem key={item.key} item={item} active={activeKey === item.key} collapsed={compact} index={index + navigation.length} onClick={() => { onNavigate(item.key); onMobileClose(); }} />)}</SidebarGroup>}
       </div>
       <div className="agri-sidebar-footer">
-        <div className="agri-sidebar-network"><span className="agri-network-mark"><Activity className="h-4 w-4" /></span><span className="agri-network-copy">{!compact && <><strong>Réseau actif</strong><small>148 experts disponibles</small></>}</span><i title="Tous les services fonctionnent" />
+        <div className="agri-sidebar-network"><span className="agri-network-mark"><Activity className="h-4 w-4" /></span><span className="agri-network-copy">{!compact && <><strong>Réseau AgriExpert</strong><small>Producteurs et spécialistes</small></>}</span>
         </div>
         <div className="agri-sidebar-tools"><button type="button" title="Aide" aria-label="Aide" onClick={onHelp}><CircleHelp className="h-4 w-4" />{!compact && 'Centre d’aide'}</button><button type="button" title="Réglages" aria-label="Réglages" onClick={onSettings}><Settings2 className="h-4 w-4" />{!compact && 'Réglages'}</button></div>
-        {!compact && <div className="agri-sidebar-account"><span className="agri-sidebar-avatar">SD</span><span><strong>Steve D.</strong><small>{roleLabels[role]} · Espace sécurisé</small></span><button type="button" className="agri-sidebar-logout" title="Se déconnecter" aria-label="Se déconnecter" onClick={onLogout}><LogOut className="h-4 w-4" /></button></div>}
+        {!compact && <div className="agri-sidebar-account"><span className="agri-sidebar-avatar" aria-hidden="true">{initials}</span><span><strong>{name}</strong><small>{roleLabels[role]} · Espace sécurisé</small></span><button type="button" className="agri-sidebar-logout" title="Se déconnecter" aria-label="Se déconnecter" onClick={onLogout}><LogOut className="h-4 w-4" /></button></div>}
         {compact && <button type="button" className="agri-sidebar-logout agri-sidebar-logout-compact" title="Se déconnecter" aria-label="Se déconnecter" onClick={onLogout}><LogOut className="h-4 w-4" /></button>}
         <button type="button" className="agri-sidebar-collapse" onClick={onCollapseToggle} aria-label={collapsed ? 'Déployer le menu' : 'Réduire le menu'} title={collapsed ? 'Déployer le menu' : 'Réduire le menu'}>{collapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />} {!compact && 'Réduire'}</button>
       </div>
