@@ -1,5 +1,6 @@
 import { AnimatePresence, motion } from 'framer-motion';
 import { Activity, ChevronLeft, ChevronRight, CircleHelp, LogOut, MapPin, Settings2, X } from 'lucide-react';
+import { useEffect, useRef } from 'react';
 import { institutionalNavigation, primaryNavigation, roleLabels, roleNavigation, roleNavigationLabels } from '../../data/navigation';
 import type { NavigationKey, UserRole } from '../../types/shell';
 import { BrandLogo } from '../brand/BrandLogo';
@@ -20,12 +21,44 @@ type AppSidebarProps = {
 };
 
 export function AppSidebar({ activeKey, role, name, initials, collapsed, mobileOpen, onNavigate, onCollapseToggle, onMobileClose, onHelp, onSettings, onLogout }: AppSidebarProps) {
+  const sidebarRef = useRef<HTMLElement>(null);
   const compact = collapsed && !mobileOpen;
   const navigation = roleNavigation[role];
   const showInstitutional = role === 'institution' && navigation.every((item) => item.key !== 'institutional');
+  useEffect(() => {
+    if (!mobileOpen) return;
+    const sidebar = sidebarRef.current;
+    if (!sidebar) return;
+    const workspace = document.querySelector<HTMLElement>('.agri-workspace');
+    const previousWorkspaceOverflow = workspace?.style.overflowY ?? '';
+    const previousWorkspaceScrollTop = workspace?.scrollTop ?? 0;
+    if (workspace) workspace.style.overflowY = 'hidden';
+    const previouslyFocused = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    const getFocusable = () => Array.from(sidebar.querySelectorAll<HTMLElement>('button:not(:disabled), a[href], input:not(:disabled), select:not(:disabled), textarea:not(:disabled), [tabindex]:not([tabindex="-1"])')).filter((element) => element.getClientRects().length > 0 && element.getAttribute('aria-hidden') !== 'true');
+    const focusable = getFocusable();
+    focusable[0]?.focus();
+    const keepFocusInSidebar = (event: KeyboardEvent) => {
+      if (event.key !== 'Tab') return;
+      const currentFocusable = getFocusable();
+      if (!currentFocusable.length) { event.preventDefault(); sidebar.focus(); return; }
+      const first = currentFocusable[0];
+      const last = currentFocusable[currentFocusable.length - 1];
+      if (event.shiftKey && (document.activeElement === first || !sidebar.contains(document.activeElement))) { event.preventDefault(); last.focus(); }
+      else if (!event.shiftKey && (document.activeElement === last || !sidebar.contains(document.activeElement))) { event.preventDefault(); first.focus(); }
+    };
+    document.addEventListener('keydown', keepFocusInSidebar);
+    return () => {
+      document.removeEventListener('keydown', keepFocusInSidebar);
+      if (workspace) {
+        workspace.style.overflowY = previousWorkspaceOverflow;
+        workspace.scrollTop = previousWorkspaceScrollTop;
+      }
+      if (previouslyFocused?.isConnected) previouslyFocused.focus();
+    };
+  }, [mobileOpen]);
   return <>
     <AnimatePresence>{mobileOpen && <motion.button type="button" className="agri-mobile-scrim" aria-label="Fermer le menu" onClick={onMobileClose} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} />}</AnimatePresence>
-    <aside id="agri-sidebar" className={['agri-sidebar', compact ? 'agri-sidebar-collapsed' : '', mobileOpen ? 'agri-sidebar-open' : ''].join(' ')} aria-label="Navigation principale">
+    <aside ref={sidebarRef} id="agri-sidebar" className={['agri-sidebar', compact ? 'agri-sidebar-collapsed' : '', mobileOpen ? 'agri-sidebar-open' : ''].join(' ')} role={mobileOpen ? 'dialog' : undefined} aria-modal={mobileOpen || undefined} aria-label="Navigation principale" tabIndex={-1}>
       <div className="agri-sidebar-top">
         <div className="agri-brand"><BrandLogo showName={!compact} descriptor="CONSEIL · TERRITOIRES" /><button type="button" className="agri-sidebar-close" onClick={onMobileClose} aria-label="Fermer le menu"><X className="h-4 w-4" /></button></div>
         {!compact && <div className="agri-sidebar-territory"><span className="agri-territory-icon"><MapPin className="h-4 w-4" /></span><span className="agri-territory-copy"><small>VOTRE TERRITOIRE</small><strong>Ouagadougou <i>·</i> Burkina Faso</strong></span><span className="agri-territory-pulse" aria-label="Zone active" /> </div>}

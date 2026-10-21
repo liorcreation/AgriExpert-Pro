@@ -1,4 +1,4 @@
-import { Component, lazy, Suspense, useCallback, useEffect, useRef, useState, type ErrorInfo, type ReactNode } from 'react';
+import { Component, lazy, Suspense, useCallback, useEffect, useLayoutEffect, useRef, useState, type ErrorInfo, type ReactNode } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
   Activity,
@@ -76,39 +76,147 @@ function readAuthSession(): AuthSession | null {
   }
 }
 
+type LocalUiPreferences = { language: LanguageCode; voiceEnabled: boolean; darkMode: boolean };
+
+function readInitialPreferences(): LocalUiPreferences {
+  const defaults: LocalUiPreferences = { language: 'fr', voiceEnabled: true, darkMode: false };
+  if (typeof window === 'undefined') return defaults;
+  try {
+    const saved = window.localStorage.getItem('agriexpert-ui-preferences');
+    if (saved) {
+      const parsed = JSON.parse(saved) as Partial<LocalUiPreferences>;
+      return {
+        language: parsed.language === 'mo' ? 'mo' : 'fr',
+        voiceEnabled: typeof parsed.voiceEnabled === 'boolean' ? parsed.voiceEnabled : defaults.voiceEnabled,
+        darkMode: typeof parsed.darkMode === 'boolean' ? parsed.darkMode : defaults.darkMode,
+      };
+    }
+    return { ...defaults, darkMode: window.localStorage.getItem('agriexpert-ui-dark-mode') === 'true' };
+  } catch { return defaults; }
+}
+
 function App() {
   const [authSession, setAuthSession] = useState<AuthSession | null>(readAuthSession);
   const [showBrandIntro, setShowBrandIntro] = useState(shouldShowBrandIntro);
+  const [initialPreferences] = useState(readInitialPreferences);
   const [activeKey, setActiveKey] = useState<NavigationKey>('overview');
   const [role, setRole] = useState<UserRole>(() => readAuthSession()?.role ?? 'producer');
-  const [language, setLanguage] = useState<LanguageCode>('fr');
-  const [voiceEnabled, setVoiceEnabled] = useState(true);
-  const [darkMode, setDarkMode] = useState(false);
+  const [language, setLanguage] = useState<LanguageCode>(initialPreferences.language);
+  const [voiceEnabled, setVoiceEnabled] = useState(initialPreferences.voiceEnabled);
+  const [darkMode, setDarkMode] = useState(initialPreferences.darkMode);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [contactRequestPending, setContactRequestPending] = useState(false);
+  const [composerModeRequest, setComposerModeRequest] = useState<'text' | 'voice'>('text');
   const [overlay, setOverlay] = useState<'search' | 'notifications' | 'profile' | 'help' | 'settings' | null>(null);
   const workspaceRef = useRef<HTMLDivElement>(null);
+  const overlayTriggerRef = useRef<HTMLElement | null>(null);
+  const preferencesRevisionRef = useRef(0);
 
-  useEffect(() => { document.documentElement.classList.toggle('dark', darkMode); }, [darkMode]);
+  const showOverlay = (next: NonNullable<typeof overlay>) => {
+    const activeElement = document.activeElement;
+    const cameFromMobileSidebar = mobileSidebarOpen && activeElement instanceof HTMLElement && document.getElementById('agri-sidebar')?.contains(activeElement);
+    if (cameFromMobileSidebar) {
+      overlayTriggerRef.current = document.querySelector<HTMLElement>('.agri-mobile-menu') ?? (activeElement instanceof HTMLElement ? activeElement : null);
+    } else if (!(overlay === 'profile' && next === 'settings' && activeElement instanceof HTMLElement && document.getElementById('agri-profile-panel')?.contains(activeElement))) {
+      overlayTriggerRef.current = activeElement instanceof HTMLElement ? activeElement : null;
+    }
+    setMobileSidebarOpen(false);
+    setOverlay(next);
+  };
+  const hideOverlay = (restoreFocus = true) => {
+    setOverlay(null);
+    if (!restoreFocus) return;
+    window.requestAnimationFrame(() => {
+      const trigger = overlayTriggerRef.current;
+      if (trigger?.isConnected) trigger.focus();
+      else document.querySelector<HTMLElement>('.agri-avatar-button')?.focus();
+    });
+  };
+
+  useLayoutEffect(() => { document.documentElement.classList.toggle('dark', darkMode); }, [darkMode]);
   useEffect(() => { if (workspaceRef.current) workspaceRef.current.scrollTop = 0; }, [activeKey]);
   useEffect(() => {
     if (!authSession || !isApiConfigured) return;
+    const requestRevision = preferencesRevisionRef.current;
     void getPreferences().then((response) => {
+      if (preferencesRevisionRef.current !== requestRevision) return;
       setLanguage(response.data.language);
       setVoiceEnabled(Boolean(response.data.voice_enabled));
-      setDarkMode(Boolean(response.data.dark_mode));
+      const savedDarkMode = Boolean(response.data.dark_mode);
+      setDarkMode(savedDarkMode);
+      try { window.localStorage.setItem('agriexpert-ui-preferences', JSON.stringify({ language: response.data.language, voiceEnabled: Boolean(response.data.voice_enabled), darkMode: savedDarkMode })); } catch { /* The server remains the source of truth when local storage is unavailable. */ }
     }).catch(() => undefined);
   }, [authSession]);
+  const persistPreferences = (patch: Partial<LocalUiPreferences>) => {
+    preferencesRevisionRef.current += 1;
+    const next = { language, voiceEnabled, darkMode, ...patch };
+    try { window.localStorage.setItem('agriexpert-ui-preferences', JSON.stringify(next)); } catch { /* Preferences still apply for this session. */ }
+    if (isApiConfigured) void savePreferences(next);
+  };
+  const updateLanguage = (next: LanguageCode) => { setLanguage(next); persistPreferences({ language: next }); };
+  const updateVoiceEnabled = () => { const next = !voiceEnabled; setVoiceEnabled(next); persistPreferences({ voiceEnabled: next }); };
+  const updateDarkMode = (next: boolean) => { setDarkMode(next); persistPreferences({ darkMode: next }); };
   useEffect(() => {
     const handleShortcut = (event: KeyboardEvent) => {
-      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') { event.preventDefault(); setOverlay('search'); }
-      if (event.key === 'Escape') setOverlay(null);
+      const target = event.target;
+      const typing = target instanceof HTMLElement && (target.isContentEditable || target.matches('input, textarea, select, [role="textbox"]'));
+      if (!event.isComposing && !typing && (event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') { event.preventDefault(); showOverlay('search'); }
+      if (event.key === 'Escape') { if (overlay) hideOverlay(); setMobileSidebarOpen(false); }
     };
     window.addEventListener('keydown', handleShortcut);
     return () => window.removeEventListener('keydown', handleShortcut);
-  }, []);
+  }, [overlay]);
+  useEffect(() => {
+    if (!overlay || overlay === 'notifications' || overlay === 'profile') return;
+    const dialogId = { search: 'agri-search-dialog', help: 'agri-help-dialog', settings: 'agri-settings-dialog' }[overlay];
+    const dialog = document.getElementById(dialogId);
+    if (!(dialog instanceof HTMLElement)) return;
+    const workspace = document.querySelector<HTMLElement>('.agri-workspace');
+    const previousWorkspaceOverflow = workspace?.style.overflowY ?? '';
+    const previousWorkspaceScrollTop = workspace?.scrollTop ?? 0;
+    if (workspace) workspace.style.overflowY = 'hidden';
+    const getFocusable = () => Array.from(dialog.querySelectorAll<HTMLElement>('button:not(:disabled), a[href], input:not(:disabled), select:not(:disabled), textarea:not(:disabled), [tabindex]:not([tabindex="-1"])')).filter((element) => element.tabIndex >= 0 && element.getClientRects().length > 0 && element.getAttribute('aria-hidden') !== 'true');
+    const focusable = getFocusable();
+    if (focusable.length) focusable[0].focus();
+    else { dialog.tabIndex = -1; dialog.focus(); }
+    const keepFocusInDialog = (event: KeyboardEvent) => {
+      if (event.key !== 'Tab') return;
+      const currentFocusable = getFocusable();
+      if (!currentFocusable.length) { event.preventDefault(); dialog.focus(); return; }
+      const first = currentFocusable[0];
+      const last = currentFocusable[currentFocusable.length - 1];
+      if (event.shiftKey && (document.activeElement === first || !dialog.contains(document.activeElement))) { event.preventDefault(); last.focus(); }
+      else if (!event.shiftKey && (document.activeElement === last || !dialog.contains(document.activeElement))) { event.preventDefault(); first.focus(); }
+    };
+    document.addEventListener('keydown', keepFocusInDialog);
+    return () => {
+      document.removeEventListener('keydown', keepFocusInDialog);
+      if (workspace) {
+        workspace.style.overflowY = previousWorkspaceOverflow;
+        workspace.scrollTop = previousWorkspaceScrollTop;
+      }
+    };
+  }, [overlay]);
+  useEffect(() => {
+    if (overlay !== 'notifications' && overlay !== 'profile') return;
+    const panelId = overlay === 'notifications' ? 'agri-notifications-panel' : 'agri-profile-panel';
+    const dismissOutside = (event: PointerEvent) => {
+      const target = event.target;
+      const panel = document.getElementById(panelId);
+      if (!(target instanceof Node) || !panel || panel.contains(target)) return;
+      if (target instanceof Element && target.closest('.agri-notification-button, .agri-avatar-button')) return;
+      hideOverlay(false);
+    };
+    document.addEventListener('pointerdown', dismissOutside);
+    return () => document.removeEventListener('pointerdown', dismissOutside);
+  }, [overlay]);
   const navigate = (key: NavigationKey) => { setActiveKey(key); setMobileSidebarOpen(false); };
+  const requestQuestionComposer = (mode: 'text' | 'voice' = 'text') => {
+    setComposerModeRequest(mode);
+    setContactRequestPending(true);
+    navigate('feed');
+  };
   const completeBrandIntro = useCallback(() => {
     try { window.sessionStorage.setItem('agriexpert-brand-intro-seen', 'true'); } catch { /* Storage can be unavailable in private contexts. */ }
     setShowBrandIntro(false);
@@ -142,18 +250,19 @@ function App() {
 
   return (
     <div className="agri-app">
+      <a className="agri-skip-link" href="#agri-main-content">Aller au contenu principal</a>
       <AnimatePresence>{showBrandIntro && <BrandIntro onComplete={completeBrandIntro} />}</AnimatePresence>
       <div className="agri-atmosphere agri-atmosphere-one" /><div className="agri-atmosphere agri-atmosphere-two" />
-      <AppSidebar activeKey={activeKey} role={role} name={authSession.name} initials={userInitials} collapsed={sidebarCollapsed} mobileOpen={mobileSidebarOpen} onNavigate={navigate} onCollapseToggle={() => setSidebarCollapsed((current) => !current)} onMobileClose={() => setMobileSidebarOpen(false)} onHelp={() => setOverlay('help')} onSettings={() => setOverlay('settings')} onLogout={logout} />
+      <AppSidebar activeKey={activeKey} role={role} name={authSession.name} initials={userInitials} collapsed={sidebarCollapsed} mobileOpen={mobileSidebarOpen} onNavigate={navigate} onCollapseToggle={() => setSidebarCollapsed((current) => !current)} onMobileClose={() => setMobileSidebarOpen(false)} onHelp={() => showOverlay('help')} onSettings={() => showOverlay('settings')} onLogout={logout} />
       <div ref={workspaceRef} className="agri-workspace">
-        <TopBar activeKey={activeKey} role={role} language={language} voiceEnabled={voiceEnabled} darkMode={darkMode} initials={userInitials} mobileMenuOpen={mobileSidebarOpen} searchOpen={overlay === 'search'} notificationsOpen={overlay === 'notifications'} profileOpen={overlay === 'profile'} onMenuOpen={() => setMobileSidebarOpen(true)} onRoleChange={updateRole} onLanguageChange={(next) => { setLanguage(next); if (isApiConfigured) void savePreferences({ language: next, voiceEnabled, darkMode }); }} onVoiceToggle={() => setVoiceEnabled((current) => { const next = !current; if (isApiConfigured) void savePreferences({ language, voiceEnabled: next, darkMode }); return next; })} onThemeToggle={() => setDarkMode((current) => { const next = !current; if (isApiConfigured) void savePreferences({ language, voiceEnabled, darkMode: next }); return next; })} onSearch={() => setOverlay('search')} onNotifications={() => setOverlay(overlay === 'notifications' ? null : 'notifications')} onProfile={() => setOverlay(overlay === 'profile' ? null : 'profile')} />
-        {overlay === 'search' && <CommandPalette onClose={() => setOverlay(null)} navigate={(key) => { navigate(key); setOverlay(null); }} />}
-        {overlay === 'notifications' && <NotificationPanel onClose={() => setOverlay(null)} navigate={(key) => { navigate(key); setOverlay(null); }} />}
-        {overlay === 'profile' && <ProfilePanel role={role} profile={authSession.profile} plan={authSession.plan} name={authSession.name} onClose={() => setOverlay(null)} onLogout={logout} onSettings={() => setOverlay('settings')} />}
-        {overlay === 'settings' && <SettingsPanel language={language} voiceEnabled={voiceEnabled} darkMode={darkMode} onClose={() => setOverlay(null)} onLanguageChange={(next) => { setLanguage(next); if (isApiConfigured) void savePreferences({ language: next, voiceEnabled, darkMode }); }} onVoiceToggle={() => setVoiceEnabled((current) => { const next = !current; if (isApiConfigured) void savePreferences({ language, voiceEnabled: next, darkMode }); return next; })} onThemeToggle={() => setDarkMode((current) => { const next = !current; if (isApiConfigured) void savePreferences({ language, voiceEnabled, darkMode: next }); return next; })} />}
-        {overlay === 'help' && <HelpPanel onClose={() => setOverlay(null)} navigate={(key) => { navigate(key); setOverlay(null); }} />}
-        <main className="agri-main"><div className="agri-main-inner"><PageErrorBoundary key={activeKey}>
-          {activeKey === 'overview' ? <Overview navigate={navigate} voiceEnabled={voiceEnabled} role={role} name={authSession.name} plan={authSession.plan} /> : activeKey === 'emergency' ? <LazyPage label="Ouverture du centre SOS…"><EmergencyPage role={role} onBack={() => navigate('overview')} /></LazyPage> : activeKey === 'feed' ? <LazyPage label="Chargement du fil d’échanges…"><FeedPage role={role} onBack={() => navigate('overview')} onNavigate={navigate} openComposerRequest={contactRequestPending} onComposerRequestHandled={() => setContactRequestPending(false)} /></LazyPage> : activeKey === 'institutional' ? <LazyPage label="Chargement du cockpit institutionnel…"><InstitutionalDashboard onBack={() => navigate('overview')} /></LazyPage> : activeKey === 'guides' ? <LazyPage label="Chargement des fiches techniques…"><ResourcesPage role={role} kind="guides" onBack={() => navigate('overview')} onNavigate={navigate} /></LazyPage> : activeKey === 'directory' ? <LazyPage label="Ouverture de l’annuaire…"><ResourcesPage role={role} kind="directory" onBack={() => navigate('overview')} onNavigate={navigate} onContactExpert={() => { setContactRequestPending(true); navigate('feed'); }} /></LazyPage> : activeKey === 'billing' ? <LazyPage label="Ouverture de la facturation…"><BillingPage onBack={() => navigate('overview')} /></LazyPage> : <Overview navigate={navigate} voiceEnabled={voiceEnabled} role={role} name={authSession.name} plan={authSession.plan} />}
+        <TopBar activeKey={activeKey} role={role} language={language} voiceEnabled={voiceEnabled} darkMode={darkMode} initials={userInitials} mobileMenuOpen={mobileSidebarOpen} searchOpen={overlay === 'search'} notificationsOpen={overlay === 'notifications'} profileOpen={overlay === 'profile'} onMenuOpen={() => setMobileSidebarOpen((open) => !open)} onRoleChange={updateRole} onLanguageChange={updateLanguage} onVoiceToggle={updateVoiceEnabled} onThemeToggle={() => updateDarkMode(!darkMode)} onSearch={() => showOverlay('search')} onNotifications={() => overlay === 'notifications' ? hideOverlay() : showOverlay('notifications')} onProfile={() => overlay === 'profile' ? hideOverlay() : showOverlay('profile')} />
+        {overlay === 'search' && <CommandPalette onClose={hideOverlay} navigate={(key) => { navigate(key); hideOverlay(); }} />}
+        {overlay === 'notifications' && <NotificationPanel onClose={hideOverlay} navigate={(key) => { navigate(key); hideOverlay(); }} />}
+        {overlay === 'profile' && <ProfilePanel role={role} profile={authSession.profile} plan={authSession.plan} name={authSession.name} onClose={hideOverlay} onLogout={logout} onSettings={() => showOverlay('settings')} />}
+        {overlay === 'settings' && <SettingsPanel language={language} voiceEnabled={voiceEnabled} darkMode={darkMode} onClose={hideOverlay} onLanguageChange={updateLanguage} onVoiceToggle={updateVoiceEnabled} onThemeToggle={() => updateDarkMode(!darkMode)} />}
+        {overlay === 'help' && <HelpPanel onClose={hideOverlay} navigate={(key) => { navigate(key); hideOverlay(); }} />}
+        <main id="agri-main-content" className="agri-main" tabIndex={-1}><div className="agri-main-inner"><PageErrorBoundary key={activeKey}>
+          {activeKey === 'overview' ? <Overview navigate={navigate} onRequestQuestion={requestQuestionComposer} voiceEnabled={voiceEnabled} role={role} name={authSession.name} plan={authSession.plan} /> : activeKey === 'emergency' ? <LazyPage label="Ouverture du centre SOS…"><EmergencyPage role={role} onBack={() => navigate('overview')} /></LazyPage> : activeKey === 'feed' ? <LazyPage label="Chargement du fil d’échanges…"><FeedPage role={role} onBack={() => navigate('overview')} onNavigate={navigate} openComposerRequest={contactRequestPending} initialComposerMode={composerModeRequest} onComposerRequestHandled={() => setContactRequestPending(false)} /></LazyPage> : activeKey === 'institutional' ? <LazyPage label="Chargement du cockpit institutionnel…"><InstitutionalDashboard onBack={() => navigate('overview')} /></LazyPage> : activeKey === 'guides' ? <LazyPage label="Chargement des fiches techniques…"><ResourcesPage role={role} kind="guides" onBack={() => navigate('overview')} onNavigate={navigate} /></LazyPage> : activeKey === 'directory' ? <LazyPage label="Ouverture de l’annuaire…"><ResourcesPage role={role} kind="directory" onBack={() => navigate('overview')} onNavigate={navigate} onContactExpert={() => requestQuestionComposer('text')} /></LazyPage> : activeKey === 'billing' ? <LazyPage label="Ouverture de la facturation…"><BillingPage onBack={() => navigate('overview')} /></LazyPage> : <Overview navigate={navigate} onRequestQuestion={requestQuestionComposer} voiceEnabled={voiceEnabled} role={role} name={authSession.name} plan={authSession.plan} />}
         </PageErrorBoundary></div></main>
       </div>
     </div>
@@ -162,20 +271,20 @@ function App() {
 
 function TopBar({ activeKey, role, language, voiceEnabled, darkMode, initials, mobileMenuOpen, searchOpen, notificationsOpen, profileOpen, onMenuOpen, onRoleChange, onLanguageChange, onVoiceToggle, onThemeToggle, onSearch, onNotifications, onProfile }: { activeKey: NavigationKey; role: UserRole; language: LanguageCode; voiceEnabled: boolean; darkMode: boolean; initials: string; mobileMenuOpen: boolean; searchOpen: boolean; notificationsOpen: boolean; profileOpen: boolean; onMenuOpen: () => void; onRoleChange: (role: UserRole) => void; onLanguageChange: (language: LanguageCode) => void; onVoiceToggle: () => void; onThemeToggle: () => void; onSearch: () => void; onNotifications: () => void; onProfile: () => void }) {
   const currentSection = roleNavigation[role].find((item) => item.key === activeKey)?.label ?? 'Vue d’ensemble';
-  return <header className="agri-topbar"><div className="agri-topbar-left"><button type="button" className="agri-mobile-menu" onClick={onMenuOpen} aria-label="Ouvrir le menu" aria-expanded={mobileMenuOpen} aria-controls="agri-sidebar"><Menu className="h-5 w-5" /></button><nav className="agri-breadcrumb" aria-label="Fil d’Ariane"><span>AgriExpert</span><span className="agri-breadcrumb-slash" aria-hidden="true">/</span><strong aria-current="page">{currentSection}</strong></nav></div><div className="agri-topbar-actions"><button type="button" className="agri-command-button" aria-label="Ouvrir la recherche" aria-haspopup="dialog" aria-expanded={searchOpen} aria-controls={searchOpen ? 'agri-command-palette' : undefined} onClick={onSearch}><Search className="h-4 w-4" /><span>Rechercher</span><kbd><Command className="h-3 w-3" /> K</kbd></button><span className="agri-topbar-divider" /><InstallAppButton collapsed /><div className="agri-topbar-desktop-controls"><CompactSelect ariaLabel="Profil d’espace" value={role} onChange={(value) => onRoleChange(value as UserRole)} options={[["producer", "Producteur"], ["expert", "Expert"], ["institution", "Institution"]]} /><CompactSelect ariaLabel="Langue de l’interface" value={language} onChange={(value) => onLanguageChange(value as LanguageCode)} options={[["fr", "FR"], ["mo", "MO"]]} /><button type="button" className="agri-icon-button" onClick={onVoiceToggle} aria-label={voiceEnabled ? 'Désactiver la lecture vocale' : 'Activer la lecture vocale'} aria-pressed={voiceEnabled}>{voiceEnabled ? <Volume2 className="h-4 w-4" /> : <Mic2 className="h-4 w-4" />}</button><button type="button" className="agri-icon-button" onClick={onThemeToggle} aria-label={darkMode ? 'Activer le thème clair' : 'Activer le thème sombre'} aria-pressed={darkMode}>{darkMode ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}</button></div><button type="button" className="agri-icon-button agri-notification-button" aria-label="Centre d’activité" aria-expanded={notificationsOpen} aria-controls={notificationsOpen ? 'agri-notifications-panel' : undefined} onClick={onNotifications}><Bell className="h-4 w-4" /></button><button type="button" className="agri-avatar-button" aria-label="Ouvrir le profil" aria-expanded={profileOpen} aria-controls={profileOpen ? 'agri-profile-panel' : undefined} onClick={onProfile}><span>{initials}</span><ChevronDown className="h-3.5 w-3.5" /></button></div></header>;
+  return <header className="agri-topbar"><div className="agri-topbar-left"><button type="button" className="agri-mobile-menu" onClick={onMenuOpen} aria-label={mobileMenuOpen ? 'Fermer le menu' : 'Ouvrir le menu'} aria-haspopup="dialog" aria-expanded={mobileMenuOpen} aria-controls="agri-sidebar"><Menu className="h-5 w-5" /></button><nav className="agri-breadcrumb" aria-label="Fil d’Ariane"><span>AgriExpert</span><span className="agri-breadcrumb-slash" aria-hidden="true">/</span><strong aria-current="page">{currentSection}</strong></nav></div><div className="agri-topbar-actions"><button type="button" className="agri-command-button" aria-label="Ouvrir la recherche" aria-haspopup="dialog" aria-expanded={searchOpen} aria-controls={searchOpen ? 'agri-command-palette' : undefined} onClick={onSearch}><Search className="h-4 w-4" /><span>Rechercher</span><kbd><Command className="h-3 w-3" /> K</kbd></button><span className="agri-topbar-divider" /><InstallAppButton collapsed /><div className="agri-topbar-desktop-controls"><CompactSelect ariaLabel="Profil d’espace" value={role} onChange={(value) => onRoleChange(value as UserRole)} options={[["producer", "Producteur"], ["expert", "Expert"], ["institution", "Institution"]]} /><CompactSelect ariaLabel="Langue de l’interface" value={language} onChange={(value) => onLanguageChange(value as LanguageCode)} options={[["fr", "FR"], ["mo", "MO"]]} /><button type="button" className="agri-icon-button" onClick={onVoiceToggle} aria-label={voiceEnabled ? 'Désactiver la lecture vocale' : 'Activer la lecture vocale'} aria-pressed={voiceEnabled}>{voiceEnabled ? <Volume2 className="h-4 w-4" /> : <Mic2 className="h-4 w-4" />}</button><button type="button" className="agri-icon-button" onClick={onThemeToggle} aria-label={darkMode ? 'Activer le thème clair' : 'Activer le thème sombre'} aria-pressed={darkMode}>{darkMode ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}</button></div><button type="button" className="agri-icon-button agri-notification-button" aria-label="Centre d’activité" aria-expanded={notificationsOpen} aria-controls={notificationsOpen ? 'agri-notifications-panel' : undefined} onClick={onNotifications}><Bell className="h-4 w-4" /></button><button type="button" className="agri-avatar-button" aria-label="Ouvrir le profil" aria-expanded={profileOpen} aria-controls={profileOpen ? 'agri-profile-panel' : undefined} onClick={onProfile}><span>{initials}</span><ChevronDown className="h-3.5 w-3.5" /></button></div></header>;
 }
 
 function CompactSelect({ ariaLabel, value, onChange, options }: { ariaLabel: string; value: string; onChange: (value: string) => void; options: string[][] }) {
   return <div className="agri-compact-select"><select value={value} onChange={(event) => onChange(event.target.value)} aria-label={ariaLabel}>{options.map(([option, label]) => <option key={option} value={option}>{label}</option>)}</select><ChevronDown className="h-3 w-3" /></div>;
 }
 
-function Overview({ navigate, voiceEnabled, role, name, plan }: { navigate: (key: NavigationKey) => void; voiceEnabled: boolean; role: UserRole; name: string; plan?: SubscriptionPlan }) {
+function Overview({ navigate, onRequestQuestion, voiceEnabled, role, name, plan }: { navigate: (key: NavigationKey) => void; onRequestQuestion: (mode?: 'text' | 'voice') => void; voiceEnabled: boolean; role: UserRole; name: string; plan?: SubscriptionPlan }) {
   if (role === 'expert') return <ExpertOverview navigate={navigate} name={name} />;
   if (role === 'institution') return <InstitutionOverview navigate={navigate} name={name} />;
-  return <ProducerOverview navigate={navigate} voiceEnabled={voiceEnabled} name={name} plan={plan} />;
+  return <ProducerOverview navigate={navigate} onRequestQuestion={onRequestQuestion} voiceEnabled={voiceEnabled} name={name} plan={plan} />;
 }
 
-function ProducerOverview({ navigate, voiceEnabled, name, plan }: { navigate: (key: NavigationKey) => void; voiceEnabled: boolean; name: string; plan?: SubscriptionPlan }) {
+function ProducerOverview({ navigate, onRequestQuestion, voiceEnabled, name, plan }: { navigate: (key: NavigationKey) => void; onRequestQuestion: (mode?: 'text' | 'voice') => void; voiceEnabled: boolean; name: string; plan?: SubscriptionPlan }) {
   const [period, setPeriod] = useState<'7d' | '30d'>('7d');
   const [dashboard, setDashboard] = useState<ProducerOverviewData | null>(null);
   const [loading, setLoading] = useState(isApiConfigured);
@@ -197,7 +306,7 @@ function ProducerOverview({ navigate, voiceEnabled, name, plan }: { navigate: (k
       <div className="agri-welcome-actions"><span className="agri-territory-pill"><MapPin className="h-3.5 w-3.5" /> Ouagadougou</span><button type="button" className="agri-primary-button" onClick={() => navigate('feed')}><Plus className="h-4 w-4" /> Nouvelle demande</button></div>
     </motion.div>
     <PlanBanner plan={plan} navigate={navigate} />
-    <HeroAction navigate={navigate} voiceEnabled={voiceEnabled} />
+    <HeroAction navigate={navigate} onRequestQuestion={onRequestQuestion} voiceEnabled={voiceEnabled} />
     {error && <div className="agri-overview-data-error" role="alert"><AlertTriangle className="h-4 w-4" /><span>{error}</span><button type="button" onClick={() => setRetryKey((current) => current + 1)}>Réessayer</button></div>}
     <MetricStrip dashboard={dashboard} loading={loading} configured={isApiConfigured} />
     <div className="agri-section-heading"><div><span className="agri-section-kicker">Votre cockpit</span><h2>Les bons repères, au bon moment</h2></div><span className="agri-section-context"><CalendarDays className="h-3.5 w-3.5" /> {dashboard ? `Actualisé ${new Date(dashboard.lastUpdated).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}` : isApiConfigured ? 'Synchronisation en cours' : 'Données non connectées'}</span></div>
@@ -212,8 +321,8 @@ function PlanBanner({ plan, navigate }: { plan?: SubscriptionPlan; navigate: (ke
   return <section className={pro ? 'agri-plan-banner agri-plan-banner-pro' : 'agri-plan-banner'}><span className="agri-plan-mark"><Sparkles className="h-4 w-4" /></span><div><strong>{pro ? 'AgriExpert PRO activé' : 'Passez à AgriExpert PRO'}</strong><small>{pro ? 'Diagnostics photo, mode hors-ligne et réponses avancées sont disponibles.' : 'Débloquez le diagnostic photo, la synchronisation hors-ligne et vos suivis avancés.'}</small></div>{!pro && <button type="button" onClick={() => navigate('billing')}>Découvrir PRO <ArrowRight className="h-3.5 w-3.5" /></button>}<span className="agri-plan-chip">{pro ? 'PRO' : 'FREE'}</span></section>;
 }
 
-function HeroAction({ navigate, voiceEnabled }: { navigate: (key: NavigationKey) => void; voiceEnabled: boolean }) {
-  return <motion.section className="agri-hero-card" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.45 }}><div className="agri-hero-orbit agri-orbit-one" /><div className="agri-hero-orbit agri-orbit-two" /><div className="agri-hero-copy"><div className="agri-hero-badge"><Sparkles className="h-3.5 w-3.5" /> Votre assistant du territoire</div><h2>Une décision plus sûre commence par <em>la bonne expertise.</em></h2><p>Posez une question par écrit ou par la voix. Notre réseau de spécialistes vous accompagne, de la parcelle au troupeau.</p><div className="agri-hero-buttons"><button type="button" className="agri-hero-primary" onClick={() => navigate('feed')}><MessageCircle className="h-4 w-4" /> Demander un conseil <ArrowRight className="ml-1 h-4 w-4" /></button><button type="button" className="agri-hero-voice" onClick={() => navigate('feed')}><span className={voiceEnabled ? 'agri-voice-pulse' : 'agri-voice-pulse agri-voice-off'}><Mic2 className="h-4 w-4" /></span> Parler à un expert</button></div></div><div className="agri-hero-visual"><div className="agri-hero-sun" /><div className="agri-hero-field"><span /><span /><span /><span /><span /></div><div className="agri-hero-plant"><Leaf className="h-24 w-24" /></div><div className="agri-floating-chip agri-chip-top"><span className="agri-chip-icon"><ShieldCheck className="h-3.5 w-3.5" /></span><span><b>Expert vérifié</b><small>Selon disponibilités</small></span></div><div className="agri-floating-chip agri-chip-bottom"><span className="agri-chip-avatar"><UsersRound className="h-4 w-4" /></span><span><b>Réseau de proximité</b><small><i /> Conseils par filière</small></span></div></div></motion.section>;
+function HeroAction({ navigate, onRequestQuestion, voiceEnabled }: { navigate: (key: NavigationKey) => void; onRequestQuestion: (mode?: 'text' | 'voice') => void; voiceEnabled: boolean }) {
+  return <motion.section className="agri-hero-card" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.45 }}><div className="agri-hero-orbit agri-orbit-one" /><div className="agri-hero-orbit agri-orbit-two" /><div className="agri-hero-copy"><div className="agri-hero-badge"><Sparkles className="h-3.5 w-3.5" /> Votre assistant du territoire</div><h2>Une décision plus sûre commence par <em>la bonne expertise.</em></h2><p>Posez une question par écrit ou par la voix. Notre réseau de spécialistes vous accompagne, de la parcelle au troupeau.</p><div className="agri-hero-buttons"><button type="button" className="agri-hero-primary" onClick={() => onRequestQuestion('text')}><MessageCircle className="h-4 w-4" /> Demander un conseil <ArrowRight className="ml-1 h-4 w-4" /></button><button type="button" className="agri-hero-voice" onClick={() => onRequestQuestion('voice')} aria-label="Ouvrir une question vocale"><span className={voiceEnabled ? 'agri-voice-pulse' : 'agri-voice-pulse agri-voice-off'}><Mic2 className="h-4 w-4" /></span> Parler à un expert</button></div></div><div className="agri-hero-visual"><div className="agri-hero-sun" /><div className="agri-hero-field"><span /><span /><span /><span /><span /></div><div className="agri-hero-plant"><Leaf className="h-24 w-24" /></div><div className="agri-floating-chip agri-chip-top"><span className="agri-chip-icon"><ShieldCheck className="h-3.5 w-3.5" /></span><span><b>Expert vérifié</b><small>Selon disponibilités</small></span></div><div className="agri-floating-chip agri-chip-bottom"><span className="agri-chip-avatar"><UsersRound className="h-4 w-4" /></span><span><b>Réseau de proximité</b><small><i /> Conseils par filière</small></span></div></div></motion.section>;
 }
 
 function MetricStrip({ dashboard, loading, configured }: { dashboard: ProducerOverviewData | null; loading: boolean; configured: boolean }) {
@@ -341,8 +450,16 @@ function CommandPalette({ onClose, navigate }: { onClose: () => void; navigate: 
     { key: 'institutional', label: 'Pilotage institutionnel', detail: 'Ouvrir les indicateurs territoriaux', icon: Activity },
   ];
   const [query, setQuery] = useState('');
+  const [activeIndex, setActiveIndex] = useState(0);
   const visible = commands.filter((item) => `${item.label} ${item.detail}`.toLowerCase().includes(query.toLowerCase()));
-  return <div className="agri-overlay-layer" role="dialog" aria-modal="true" aria-label="Recherche globale" onMouseDown={(event) => { if (event.currentTarget === event.target) onClose(); }}><motion.div id="agri-command-palette" className="agri-command-modal" initial={{ opacity: 0, y: -12, scale: .98 }} animate={{ opacity: 1, y: 0, scale: 1 }}><div className="agri-modal-search"><Search className="h-5 w-5" /><input autoFocus value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Que cherchez-vous ?" /><button type="button" onClick={onClose} aria-label="Fermer"><X className="h-4 w-4" /></button></div><div className="agri-command-list">{visible.map((item, index) => { const Icon = item.icon; return <button type="button" key={item.key} onClick={() => navigate(item.key)}><span className="agri-command-icon"><Icon className="h-4 w-4" /></span><span><strong>{item.label}</strong><small>{item.detail}</small></span><kbd>{index < 9 ? `0${index + 1}` : index + 1}</kbd></button>; })}{visible.length === 0 && <p className="agri-command-empty">Aucun parcours trouvé.</p>}</div><div className="agri-modal-footer"><span><Command className="h-3 w-3" /> K pour ouvrir</span><span>ESC pour fermer</span></div></motion.div></div>;
+  const selectedIndex = Math.min(activeIndex, Math.max(0, visible.length - 1));
+  const moveSelection = (event: React.KeyboardEvent<HTMLInputElement>) => {
+    if (!visible.length) return;
+    if (event.key === 'ArrowDown') { event.preventDefault(); setActiveIndex((index) => (index + 1) % visible.length); }
+    else if (event.key === 'ArrowUp') { event.preventDefault(); setActiveIndex((index) => (index - 1 + visible.length) % visible.length); }
+    else if (event.key === 'Enter' && visible[selectedIndex]) { event.preventDefault(); navigate(visible[selectedIndex].key); }
+  };
+  return <div id="agri-search-dialog" className="agri-overlay-layer" role="dialog" aria-modal="true" aria-label="Recherche globale" onMouseDown={(event) => { if (event.currentTarget === event.target) onClose(); }}><motion.div id="agri-command-palette" className="agri-command-modal" initial={{ opacity: 0, y: -12, scale: .98 }} animate={{ opacity: 1, y: 0, scale: 1 }}><div className="agri-modal-search"><Search className="h-5 w-5" aria-hidden="true" /><input autoFocus role="combobox" aria-label="Rechercher dans AgriExpert" aria-autocomplete="list" aria-expanded={visible.length > 0} aria-controls={visible.length ? 'agri-command-results' : undefined} aria-activedescendant={visible.length ? `agri-command-option-${visible[selectedIndex].key}` : undefined} value={query} onChange={(event) => { setQuery(event.target.value); setActiveIndex(0); }} onKeyDown={moveSelection} placeholder="Que cherchez-vous ?" /><button type="button" onClick={onClose} aria-label="Fermer"><X className="h-4 w-4" /></button></div>{visible.length > 0 ? <div id="agri-command-results" className="agri-command-list" role="listbox" aria-label="Résultats de recherche">{visible.map((item, index) => { const Icon = item.icon; const selected = index === selectedIndex; return <button id={`agri-command-option-${item.key}`} type="button" role="option" aria-selected={selected} tabIndex={-1} className={selected ? 'agri-command-option-active' : undefined} key={item.key} onMouseMove={() => setActiveIndex(index)} onClick={() => navigate(item.key)}><span className="agri-command-icon"><Icon className="h-4 w-4" aria-hidden="true" /></span><span><strong>{item.label}</strong><small>{item.detail}</small></span><kbd aria-hidden="true">{index < 9 ? `0${index + 1}` : index + 1}</kbd></button>; })}</div> : <p className="agri-command-empty" role="status">Aucun parcours trouvé.</p>}<div className="agri-modal-footer"><span><Command className="h-3 w-3" aria-hidden="true" /> ↑↓ naviguer · Entrée ouvrir</span><span>Échap pour fermer</span></div></motion.div></div>;
 }
 
 function NotificationPanel({ onClose, navigate }: { onClose: () => void; navigate: (key: NavigationKey) => void }) {
@@ -351,14 +468,14 @@ function NotificationPanel({ onClose, navigate }: { onClose: () => void; navigat
     { key: 'emergency', label: 'SOS Agropastoral', detail: 'Ouvrir le suivi des urgences', icon: Siren },
     { key: 'guides', label: 'Fiches techniques', detail: 'Retrouver vos repères de terrain', icon: BookOpen },
   ];
-  return <div id="agri-notifications-panel" className="agri-floating-panel agri-notifications-panel"><div className="agri-floating-head"><div><strong>Centre d’activité</strong><small>Vos informations AgriExpert</small></div><button type="button" onClick={onClose} aria-label="Fermer"><X className="h-4 w-4" /></button></div><div className="agri-notification-empty" role="status"><span><Bell className="h-5 w-5" /></span><strong>Pas de notification à afficher</strong><p>Les notifications personnelles ne sont pas encore activées. Consultez directement vos espaces pour voir les dernières mises à jour.</p></div><div className="agri-notification-shortcuts">{destinations.map(({ key, label, detail, icon: Icon }) => <button type="button" key={key} onClick={() => navigate(key)}><Icon className="h-4 w-4" /><span><strong>{label}</strong><small>{detail}</small></span><ArrowRight className="ml-auto h-4 w-4" /></button>)}</div></div>;
+  return <div id="agri-notifications-panel" className="agri-floating-panel agri-notifications-panel" role="region" aria-labelledby="agri-notifications-title"><div className="agri-floating-head"><div><strong id="agri-notifications-title">Centre d’activité</strong><small>Vos informations AgriExpert</small></div><button type="button" onClick={onClose} aria-label="Fermer"><X className="h-4 w-4" /></button></div><div className="agri-notification-empty" role="status"><span><Bell className="h-5 w-5" /></span><strong>Pas de notification à afficher</strong><p>Les notifications personnelles ne sont pas encore activées. Consultez directement vos espaces pour voir les dernières mises à jour.</p></div><div className="agri-notification-shortcuts">{destinations.map(({ key, label, detail, icon: Icon }) => <button type="button" key={key} onClick={() => navigate(key)}><Icon className="h-4 w-4" /><span><strong>{label}</strong><small>{detail}</small></span><ArrowRight className="ml-auto h-4 w-4" /></button>)}</div></div>;
 }
 
 function ProfilePanel({ role, profile, plan, name, onClose, onLogout, onSettings }: { role: UserRole; profile?: ProfileSpecialty; plan?: SubscriptionPlan; name: string; onClose: () => void; onLogout: () => void; onSettings: () => void }) {
   const roleLabel = role === 'producer' ? 'Producteur' : role === 'expert' ? 'Expert' : 'Institution';
   const profileLabel = profile?.replace('fish-farmer', 'Pisciculteur').replace('livestock', 'Éleveur').replace('beekeeper', 'Apiculteur').replace('farmer', 'Agriculteur').replace('agronomist', 'Agronome').replace('veterinarian', 'Vétérinaire').replace('aquaculture-specialist', 'Spécialiste pisciculture').replace('beekeeping-advisor', 'Apiculteur conseil');
   const planLabel = plan === 'pro' ? 'PRO' : plan === 'institution' ? 'Institution' : 'Free';
-  return <div id="agri-profile-panel" className="agri-floating-panel agri-profile-panel"><div className="agri-floating-head"><div className="agri-profile-heading"><span>{name.split(' ').map((part) => part[0]).join('').slice(0, 2).toUpperCase()}</span><div><strong>{name}</strong><small>{roleLabel} · {profileLabel || 'Compte actif'}</small></div></div><button type="button" onClick={onClose} aria-label="Fermer"><X className="h-4 w-4" /></button></div><div className="agri-profile-plan"><span>Formule active</span><strong>{planLabel}</strong><small>{plan === 'pro' ? 'Diagnostics photo · hors-ligne · outils avancés' : plan === 'institution' ? 'Pilotage agrégé et suivi territorial' : 'Accès essentiel au réseau'}</small></div><div className="agri-profile-menu"><button type="button" onClick={onSettings}><ShieldCheck className="h-4 w-4" /> Préférences du compte <ArrowRight className="ml-auto h-3.5 w-3.5" /></button><button type="button" onClick={onSettings}><Settings2 className="h-4 w-4" /> Réglages <ArrowRight className="ml-auto h-3.5 w-3.5" /></button><button type="button" className="agri-profile-logout" onClick={onLogout}><span>↗</span> Se déconnecter</button></div></div>;
+  return <div id="agri-profile-panel" className="agri-floating-panel agri-profile-panel" role="region" aria-labelledby="agri-profile-title"><div className="agri-floating-head"><div className="agri-profile-heading"><span aria-hidden="true">{name.split(' ').map((part) => part[0]).join('').slice(0, 2).toUpperCase()}</span><div><strong id="agri-profile-title">{name}</strong><small>{roleLabel} · {profileLabel || 'Compte actif'}</small></div></div><button type="button" onClick={onClose} aria-label="Fermer"><X className="h-4 w-4" /></button></div><div className="agri-profile-plan"><span>Formule active</span><strong>{planLabel}</strong><small>{plan === 'pro' ? 'Diagnostics photo · hors-ligne · outils avancés' : plan === 'institution' ? 'Pilotage agrégé et suivi territorial' : 'Accès essentiel au réseau'}</small></div><div className="agri-profile-menu"><button type="button" onClick={onSettings}><ShieldCheck className="h-4 w-4" /> Préférences du compte <ArrowRight className="ml-auto h-3.5 w-3.5" /></button><button type="button" onClick={onSettings}><Settings2 className="h-4 w-4" /> Réglages <ArrowRight className="ml-auto h-3.5 w-3.5" /></button><button type="button" className="agri-profile-logout" onClick={onLogout}><span aria-hidden="true">↗</span> Se déconnecter</button></div></div>;
 }
 
 function SettingsPanel({ language, voiceEnabled, darkMode, onClose, onLanguageChange, onVoiceToggle, onThemeToggle }: { language: LanguageCode; voiceEnabled: boolean; darkMode: boolean; onClose: () => void; onLanguageChange: (language: LanguageCode) => void; onVoiceToggle: () => void; onThemeToggle: () => void }) {
@@ -381,7 +498,7 @@ function SettingsPanel({ language, voiceEnabled, darkMode, onClose, onLanguageCh
     catch (error) { setPrivacyMessage(error instanceof Error ? error.message : 'Demande indisponible.'); }
     finally { setPrivacyBusy(false); }
   }
-  return <div className="agri-overlay-layer agri-settings-overlay" role="dialog" aria-modal="true" aria-labelledby="agri-settings-title" onMouseDown={(event) => { if (event.currentTarget === event.target) onClose(); }}><motion.section className="agri-action-modal" initial={{ opacity: 0, y: 12, scale: .98 }} animate={{ opacity: 1, y: 0, scale: 1 }}><div className="agri-floating-head"><div><strong id="agri-settings-title">Réglages et préférences</strong><small>Personnalisez votre espace terrain</small></div><button type="button" onClick={onClose} aria-label="Fermer"><X className="h-4 w-4" /></button></div><div className="agri-settings-list"><label><span><strong>Langue de l’interface</strong><small>Choisissez la langue de lecture et des repères</small></span><select value={language} onChange={(event) => onLanguageChange(event.target.value as LanguageCode)}><option value="fr">Français</option><option value="mo">Mooré</option></select></label><button type="button" role="switch" aria-checked={voiceEnabled} onClick={onVoiceToggle}><span><strong>Assistance vocale</strong><small>Lecture des contenus compatibles</small></span><span className={voiceEnabled ? 'agri-settings-switch agri-settings-switch-on' : 'agri-settings-switch'} aria-hidden="true"><i /></span></button><button type="button" role="switch" aria-checked={darkMode} onClick={onThemeToggle}><span><strong>Thème sombre</strong><small>Réduire la luminosité de l’espace</small></span><span className={darkMode ? 'agri-settings-switch agri-settings-switch-on' : 'agri-settings-switch'} aria-hidden="true"><i /></span></button></div><div className="agri-privacy-actions"><h3>Vos données personnelles</h3><p>Exportez les informations liées à votre compte ou déposez une demande de suppression. Les délais et certaines obligations de conservation doivent encore être validés juridiquement au Burkina Faso.</p><button type="button" onClick={() => void downloadData()} disabled={privacyBusy}>Télécharger mes données (JSON)</button><button type="button" onClick={() => void submitDeletionRequest()} disabled={privacyBusy}>Demander la suppression du compte</button><div><a href="/privacy.html" target="_blank" rel="noreferrer">Projet de politique de confidentialité</a><a href="/terms.html" target="_blank" rel="noreferrer">Projet de conditions d’utilisation</a></div>{privacyMessage && <p role="status">{privacyMessage}</p>}</div><p className="agri-settings-note">Les préférences sont enregistrées sur votre compte lorsque la connexion au service est disponible.</p></motion.section></div>;
+  return <div id="agri-settings-dialog" className="agri-overlay-layer agri-settings-overlay" role="dialog" aria-modal="true" aria-labelledby="agri-settings-title" onMouseDown={(event) => { if (event.currentTarget === event.target) onClose(); }}><motion.section className="agri-action-modal" initial={{ opacity: 0, y: 12, scale: .98 }} animate={{ opacity: 1, y: 0, scale: 1 }}><div className="agri-floating-head"><div><strong id="agri-settings-title">Réglages et préférences</strong><small>Personnalisez votre espace terrain</small></div><button type="button" onClick={onClose} aria-label="Fermer"><X className="h-4 w-4" /></button></div><div className="agri-settings-list"><label><span><strong>Langue de l’interface</strong><small>Choisissez la langue de lecture et des repères</small></span><select value={language} onChange={(event) => onLanguageChange(event.target.value as LanguageCode)}><option value="fr">Français</option><option value="mo">Mooré</option></select></label><button type="button" role="switch" aria-checked={voiceEnabled} onClick={onVoiceToggle}><span><strong>Assistance vocale</strong><small>Lecture des contenus compatibles</small></span><span className={voiceEnabled ? 'agri-settings-switch agri-settings-switch-on' : 'agri-settings-switch'} aria-hidden="true"><i /></span></button><button type="button" role="switch" aria-checked={darkMode} onClick={onThemeToggle}><span><strong>Thème sombre</strong><small>Réduire la luminosité de l’espace</small></span><span className={darkMode ? 'agri-settings-switch agri-settings-switch-on' : 'agri-settings-switch'} aria-hidden="true"><i /></span></button></div><div className="agri-privacy-actions"><h3>Vos données personnelles</h3><p>Exportez les informations liées à votre compte ou déposez une demande de suppression. Les délais et certaines obligations de conservation doivent encore être validés juridiquement au Burkina Faso.</p><button type="button" onClick={() => void downloadData()} disabled={privacyBusy}>Télécharger mes données (JSON)</button><button type="button" onClick={() => void submitDeletionRequest()} disabled={privacyBusy}>Demander la suppression du compte</button><div><a href="/privacy.html" target="_blank" rel="noreferrer">Projet de politique de confidentialité</a><a href="/terms.html" target="_blank" rel="noreferrer">Projet de conditions d’utilisation</a></div>{privacyMessage && <p role="status">{privacyMessage}</p>}</div><p className="agri-settings-note">Les préférences sont enregistrées sur votre compte lorsque la connexion au service est disponible.</p></motion.section></div>;
 }
 
 function HelpPanel({ onClose, navigate }: { onClose: () => void; navigate: (key: NavigationKey) => void }) {
@@ -390,7 +507,7 @@ function HelpPanel({ onClose, navigate }: { onClose: () => void; navigate: (key:
     { key: 'emergency', title: 'Signaler une urgence', detail: 'Ouvrir le parcours SOS agropastoral', icon: Siren },
     { key: 'guides', title: 'Consulter les fiches', detail: 'Trouver un itinéraire ou un protocole', icon: BookOpen },
   ];
-  return <div className="agri-overlay-layer agri-settings-overlay" role="dialog" aria-modal="true" aria-labelledby="agri-help-title" onMouseDown={(event) => { if (event.currentTarget === event.target) onClose(); }}><motion.section className="agri-action-modal" initial={{ opacity: 0, y: 12, scale: .98 }} animate={{ opacity: 1, y: 0, scale: 1 }}><div className="agri-floating-head"><div><strong id="agri-help-title">Centre d’aide AgriExpert</strong><small>Choisissez le bon parcours pour avancer</small></div><button type="button" onClick={onClose} aria-label="Fermer"><X className="h-4 w-4" /></button></div><div className="agri-command-list">{destinations.map(({ key, title, detail, icon: Icon }) => <button type="button" key={key} onClick={() => navigate(key)}><span className="agri-command-icon"><Icon className="h-4 w-4" /></span><span><strong>{title}</strong><small>{detail}</small></span><ArrowRight className="h-4 w-4" /></button>)}</div><div className="agri-help-foot"><strong>Besoin d’une aide humaine ?</strong><p>Pour une urgence sanitaire, contactez également les services vétérinaires ou phytosanitaires officiels de votre zone. AgriExpert ne remplace pas les services d’urgence.</p></div></motion.section></div>;
+  return <div id="agri-help-dialog" className="agri-overlay-layer agri-settings-overlay" role="dialog" aria-modal="true" aria-labelledby="agri-help-title" onMouseDown={(event) => { if (event.currentTarget === event.target) onClose(); }}><motion.section className="agri-action-modal" initial={{ opacity: 0, y: 12, scale: .98 }} animate={{ opacity: 1, y: 0, scale: 1 }}><div className="agri-floating-head"><div><strong id="agri-help-title">Centre d’aide AgriExpert</strong><small>Choisissez le bon parcours pour avancer</small></div><button type="button" onClick={onClose} aria-label="Fermer"><X className="h-4 w-4" /></button></div><div className="agri-command-list">{destinations.map(({ key, title, detail, icon: Icon }) => <button type="button" key={key} onClick={() => navigate(key)}><span className="agri-command-icon"><Icon className="h-4 w-4" /></span><span><strong>{title}</strong><small>{detail}</small></span><ArrowRight className="h-4 w-4" /></button>)}</div><div className="agri-help-foot"><strong>Besoin d’une aide humaine ?</strong><p>Pour une urgence sanitaire, contactez également les services vétérinaires ou phytosanitaires officiels de votre zone. AgriExpert ne remplace pas les services d’urgence.</p></div></motion.section></div>;
 }
 
 type PageErrorBoundaryState = { hasError: boolean };
@@ -415,7 +532,7 @@ class PageErrorBoundary extends Component<{ children: ReactNode }, PageErrorBoun
 }
 
 function LazyPage({ label, children }: { label: string; children: ReactNode }) {
-  return <Suspense fallback={<div className="agri-page-loading" role="status" aria-live="polite" aria-busy="true"><div className="agri-page-loading-skeleton" aria-hidden="true"><span /><div><i /><i /><i /></div><section><i /><i /><i /></section></div><span className="agri-page-loading-mark" aria-hidden="true"><Activity className="h-5 w-5" /></span><p>{label}</p></div>}>{children}</Suspense>;
+  return <Suspense fallback={<div className="agri-page-loading" role="status" aria-live="polite" aria-busy="true"><div className="agri-page-loading-skeleton" aria-hidden="true"><header><i /><i /><i /></header><section className="agri-loading-metrics"><i /><i /><i /><i /></section><div className="agri-loading-panels"><section><i /><i /><i /><i /></section><aside><i /><i /><i /></aside></div></div><span className="agri-page-loading-mark" aria-hidden="true"><Activity className="h-5 w-5" /></span><p>{label}</p></div>}>{children}</Suspense>;
 }
 
 export default App;

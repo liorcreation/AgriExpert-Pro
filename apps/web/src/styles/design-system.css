@@ -451,17 +451,26 @@ body { font-size: 16px; }
 .agri-main-inner { margin: 0 auto; max-width: 1440px; }
 .agri-page-loading { display: flex; min-height: 70vh; flex-direction: column; align-items: center; justify-content: center; color: var(--agri-muted); }
 .agri-page-loading-mark { display: flex; height: 48px; width: 48px; align-items: center; justify-content: center; border: 1px solid rgb(var(--ae-brand-500) / 16%); border-radius: 16px; margin-top: 18px; background: rgb(var(--ae-success) / 9%); color: rgb(var(--ae-success)); animation: agri-breathe 1.5s ease-in-out infinite; }
-.agri-page-loading-skeleton { display: grid; width: min(100% - 32px, 430px); grid-template-columns: 1fr; gap: 12px; border: 1px solid var(--agri-line); border-radius: var(--ae-radius-surface); background: var(--agri-card); padding: 18px; box-shadow: var(--ae-shadow-1); }
-.agri-page-loading-skeleton > span, .agri-page-loading-skeleton i { display: block; border-radius: 8px; background: rgb(var(--ae-brand-500) / 10%); animation: agri-skeleton-pulse 1.4s ease-in-out infinite alternate; }
-.agri-page-loading-skeleton > span { width: 42%; height: 13px; }
-.agri-page-loading-skeleton > div { display: flex; flex-direction: column; gap: 8px; }
-.agri-page-loading-skeleton > div i:first-child { width: 72%; height: 22px; }
-.agri-page-loading-skeleton > div i:nth-child(2) { width: 94%; height: 9px; animation-delay: 100ms; }
-.agri-page-loading-skeleton > div i:nth-child(3) { width: 59%; height: 9px; animation-delay: 180ms; }
-.agri-page-loading-skeleton > section { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-top: 2px; }
-.agri-page-loading-skeleton > section i { min-height: 62px; border-radius: 11px; animation-delay: 80ms; }
-.agri-page-loading-skeleton > section i:nth-child(2) { animation-delay: 160ms; }
-.agri-page-loading-skeleton > section i:nth-child(3) { animation-delay: 240ms; }
+.agri-page-loading-skeleton { display: grid; width: min(100%, 1120px); grid-template-columns: 1fr; gap: 14px; border: 1px solid var(--agri-line); border-radius: var(--ae-radius-surface); background: var(--agri-card); padding: clamp(16px, 2.4vw, 26px); text-align: left; box-shadow: var(--ae-shadow-1); }
+.agri-page-loading-skeleton i { display: block; border-radius: 8px; background: rgb(var(--ae-brand-500) / 10%); animation: agri-skeleton-pulse 1.4s ease-in-out infinite alternate; }
+.agri-page-loading-skeleton > header { display: grid; gap: 9px; padding-bottom: 5px; }
+.agri-page-loading-skeleton > header i:first-child { width: 18%; height: 10px; }
+.agri-page-loading-skeleton > header i:nth-child(2) { width: min(48%, 410px); height: 25px; animation-delay: 100ms; }
+.agri-page-loading-skeleton > header i:nth-child(3) { width: min(70%, 610px); height: 11px; animation-delay: 180ms; }
+.agri-page-loading-skeleton .agri-loading-metrics { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+.agri-page-loading-skeleton .agri-loading-metrics i { min-height: 78px; border: 1px solid var(--agri-line); border-radius: 13px; background: linear-gradient(110deg, rgb(var(--ae-brand-500) / 8%), rgb(var(--ae-brand-500) / 4%)); animation-delay: 80ms; }
+.agri-page-loading-skeleton .agri-loading-metrics i:nth-child(2) { animation-delay: 140ms; }
+.agri-page-loading-skeleton .agri-loading-metrics i:nth-child(3) { animation-delay: 200ms; }
+.agri-page-loading-skeleton .agri-loading-metrics i:nth-child(4) { animation-delay: 260ms; }
+.agri-page-loading-skeleton .agri-loading-panels { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(220px, .8fr); gap: 12px; }
+.agri-page-loading-skeleton .agri-loading-panels > * { display: grid; min-height: 188px; align-content: start; gap: 12px; border: 1px solid var(--agri-line); border-radius: 13px; padding: 15px; }
+.agri-page-loading-skeleton .agri-loading-panels > * i { height: 10px; }
+.agri-page-loading-skeleton .agri-loading-panels > * i:first-child { width: 42%; height: 15px; margin-bottom: 4px; }
+.agri-page-loading-skeleton .agri-loading-panels > section i:nth-child(2) { width: 94%; animation-delay: 100ms; }
+.agri-page-loading-skeleton .agri-loading-panels > section i:nth-child(3) { width: 83%; animation-delay: 180ms; }
+.agri-page-loading-skeleton .agri-loading-panels > section i:nth-child(4) { width: 69%; animation-delay: 260ms; }
+.agri-page-loading-skeleton .agri-loading-panels > aside i:nth-child(2) { width: 78%; animation-delay: 140ms; }
+.agri-page-loading-skeleton .agri-loading-panels > aside i:nth-child(3) { width: 58%; animation-delay: 220ms; }
 .agri-page-loading p { margin-top: 12px; font-size: .9375rem; font-weight: 700; }
 @keyframes agri-skeleton-pulse { from { opacity: .52; } to { opacity: 1; } }
 .dark .agri-page-loading-skeleton { border-color: rgb(255 255 255 / 9%); background: var(--agri-card); }
@@ -1869,6 +1878,11 @@ button { -webkit-tap-highlight-color: transparent; }
 
 @media (max-width: 640px) {
   .agri-page-loading { min-height: 44vh; }
+  .agri-page-loading-skeleton { gap: 10px; }
+  .agri-page-loading-skeleton .agri-loading-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+  .agri-page-loading-skeleton .agri-loading-metrics i { min-height: 62px; }
+  .agri-page-loading-skeleton .agri-loading-panels { grid-template-columns: 1fr; gap: 8px; }
+  .agri-page-loading-skeleton .agri-loading-panels > * { min-height: 112px; padding: 12px; }
   .agri-empty-state,
   .agri-guides-page .agri-empty-state,
   .agri-directory-page .agri-empty-state { min-height: 250px; padding: 24px 18px; }
@@ -2504,26 +2518,27 @@ button { -webkit-tap-highlight-color: transparent; }
 .agri-settings-list > button { border-radius: 12px; transition: background-color var(--ae-motion-fast); }
 .agri-settings-list > button:hover { background: rgb(var(--ae-brand-50) / 65%); }
 .dark .agri-settings-list > button:hover { background: rgb(var(--ae-brand-800) / 50%); }
-.agri-settings-list strong, .agri-help-foot strong { color: var(--agri-ink); font-size: .9375rem; }
-.agri-settings-list small, .agri-help-foot p { color: var(--agri-muted); font-size: .8125rem; line-height: 1.5; }
-.agri-settings-list select { min-height: 44px; max-width: 180px; border-color: var(--agri-line); border-radius: var(--ae-radius-control); background: var(--agri-paper); color: var(--agri-ink); font: inherit; font-size: .8125rem; }
+.agri-settings-list strong, .agri-help-foot strong { color: var(--agri-ink); font-size: 1rem; }
+.agri-settings-list small, .agri-help-foot p { color: var(--agri-muted); font-size: .875rem; line-height: 1.55; }
+.agri-settings-list select { min-height: 46px; max-width: 190px; border-color: var(--agri-line); border-radius: var(--ae-radius-control); background: var(--agri-paper); color: var(--agri-ink); font: inherit; font-size: .875rem; }
 .agri-settings-list select:focus-visible { outline: 3px solid rgb(var(--ae-brand-500) / 28%); outline-offset: 2px; }
 .agri-settings-switch { width: 46px; height: 26px; flex: 0 0 auto; border: 1px solid rgb(var(--ae-ink) / 9%); background: rgb(var(--ae-muted) / 30%); transition: background-color var(--ae-motion-standard); }
 .agri-settings-switch i { width: 18px; height: 18px; transition: transform var(--ae-motion-standard); }
 .agri-settings-switch-on { background: rgb(var(--ae-success)); }
 .agri-settings-switch-on i { transform: translateX(20px); }
 .agri-privacy-actions { gap: 10px; margin: 10px 22px 0; padding: 18px 0 0; }
-.agri-privacy-actions h3 { font-size: 1rem; letter-spacing: -.02em; }
-.agri-privacy-actions p { font-size: .8125rem; line-height: 1.6; }
-.agri-privacy-actions button { min-height: 44px; border-radius: var(--ae-radius-control); padding: 9px 12px; font-size: .8125rem; transition: background-color var(--ae-motion-fast), border-color var(--ae-motion-fast), opacity var(--ae-motion-fast); }
+.agri-privacy-actions h3 { font-size: 1.125rem; letter-spacing: -.02em; }
+.agri-privacy-actions p { font-size: .875rem; line-height: 1.65; }
+.agri-privacy-actions button { min-height: 46px; border-radius: var(--ae-radius-control); padding: 10px 14px; font-size: .875rem; transition: background-color var(--ae-motion-fast), border-color var(--ae-motion-fast), opacity var(--ae-motion-fast); }
 .agri-privacy-actions button:hover:not(:disabled) { border-color: rgb(var(--ae-brand-500) / 32%); background: rgb(var(--ae-brand-50) / 62%); }
 .dark .agri-privacy-actions button:hover:not(:disabled) { background: rgb(var(--ae-brand-800) / 50%); }
 .agri-privacy-actions button:focus-visible { outline: 3px solid rgb(var(--ae-brand-500) / 34%); outline-offset: 2px; }
+.agri-privacy-actions button:disabled { cursor: wait; opacity: .58; }
 .agri-privacy-actions > div { display: flex; flex-wrap: wrap; gap: 8px 18px; padding-top: 3px; }
-.agri-privacy-actions a { color: rgb(var(--ae-brand-600)); font-size: .8125rem; font-weight: 700; text-decoration-thickness: 1px; text-underline-offset: 3px; }
+.agri-privacy-actions a { min-height: 44px; display: inline-flex; align-items: center; color: rgb(var(--ae-brand-600)); font-size: .875rem; font-weight: 700; text-decoration-thickness: 1px; text-underline-offset: 3px; }
 .dark .agri-privacy-actions a { color: rgb(var(--ae-leaf-300)); }
 .agri-privacy-actions a:hover { text-decoration: underline; }
-.agri-settings-note { padding: 13px 22px 20px; font-size: .75rem; line-height: 1.55; }
+.agri-settings-note { padding: 13px 22px 20px; font-size: .8125rem; line-height: 1.6; }
 .agri-help-foot { border: 1px solid rgb(var(--ae-brand-500) / 12%); border-radius: var(--ae-radius-field); background: rgb(var(--ae-brand-50) / 62%); padding: 15px 17px; }
 .dark .agri-help-foot { background: rgb(var(--ae-brand-800) / 48%); }
 .agri-help-foot p { margin-top: 7px; }
@@ -2533,8 +2548,8 @@ button { -webkit-tap-highlight-color: transparent; }
 .dark .agri-command-list button:hover { background: rgb(var(--ae-brand-800) / 45%); }
 .agri-command-icon { width: 40px; height: 40px; border-radius: 13px; background: rgb(var(--ae-brand-50)); color: rgb(var(--ae-brand-700)); }
 .dark .agri-command-icon { background: rgb(var(--ae-brand-800)); color: rgb(var(--ae-leaf-200)); }
-.agri-command-list strong { color: var(--agri-ink); font-size: .875rem; }
-.agri-command-list small { font-size: .75rem; }
+.agri-command-list strong { color: var(--agri-ink); font-size: 1rem; }
+.agri-command-list small { font-size: .875rem; line-height: 1.5; }
 .agri-help-foot { margin: 0 18px 18px; }
 .agri-profile-panel button:focus-visible, .agri-action-modal button:focus-visible, .agri-action-modal a:focus-visible { outline: 3px solid rgb(var(--ae-brand-500) / 34%); outline-offset: 3px; }
 @media (max-width: 640px) {
@@ -2969,7 +2984,9 @@ button { -webkit-tap-highlight-color: transparent; }
 .agri-breadcrumb strong { max-width: min(34vw, 360px); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 @media (max-width: 900px) {
-  .agri-sidebar, .agri-sidebar:not(.agri-sidebar-collapsed) { z-index: 61; width: min(330px, calc(100vw - 44px)); min-width: min(330px, calc(100vw - 44px)); height: 100dvh; padding-top: max(18px, env(safe-area-inset-top)); padding-bottom: max(14px, env(safe-area-inset-bottom)); }
+  .agri-sidebar, .agri-sidebar:not(.agri-sidebar-collapsed) { z-index: 61; width: min(330px, calc(100vw - 44px)); min-width: min(330px, calc(100vw - 44px)); height: 100dvh; padding-top: max(18px, env(safe-area-inset-top)); padding-bottom: max(14px, env(safe-area-inset-bottom)); transition: transform .28s ease, visibility 0s linear .28s; }
+  .agri-sidebar:not(.agri-sidebar-open) { visibility: hidden; pointer-events: none; }
+  .agri-sidebar.agri-sidebar-open { visibility: visible; pointer-events: auto; transition: transform .28s ease, visibility 0s; }
   .agri-sidebar-open { overscroll-behavior: contain; }
   .agri-mobile-scrim { z-index: 60; }
   .agri-sidebar-close { display: inline-flex; }
@@ -3188,6 +3205,18 @@ button { -webkit-tap-highlight-color: transparent; }
   .ag-feed-composer *, .ag-feed-composer *::before, .ag-feed-composer *::after, .ag-feed-question-audio *, .ag-feed-question-audio *::before, .ag-feed-question-audio *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
 }
 
+/* Feed reading pass — raise secondary copy without inflating the main hierarchy. */
+.ag-feed-page :is(.ag-feed-eyebrow, .ag-feed-section-kicker, .ag-feed-signal small, .ag-feed-signal em, .ag-feed-online-card small, .ag-feed-network-state small, .ag-feed-sync-banner strong, .ag-feed-sync-banner small, .ag-feed-live-pill, .ag-feed-filter, .ag-feed-filter span, .ag-feed-author > div > span, .ag-feed-question-status, .ag-feed-category, .ag-feed-voice-tag, .ag-feed-answer-count, .ag-feed-question-action, .ag-feed-reply, .ag-feed-aside-kicker, .ag-feed-avatars span, .ag-feed-live-foot > span, .ag-feed-live-foot button, .ag-feed-topic > span, .ag-feed-topic small, .ag-feed-tips-card li, .ag-feed-voice-note, .ag-feed-compose-body small, .ag-feed-photo-capture small, .ag-feed-photo-button, .ag-feed-photo-preview, .ag-feed-media-consent, .ag-feed-diagnosis-action small, .ag-feed-human-review small, .ag-feed-compose-footer > span) { font-size: .8125rem; line-height: 1.5; }
+.ag-feed-page :is(.ag-feed-eyebrow, .ag-feed-section-kicker, .ag-feed-aside-kicker) { letter-spacing: .1em; }
+.ag-feed-page :is(.ag-feed-question-status, .ag-feed-category, .ag-feed-voice-tag, .ag-feed-live-pill) { min-height: 34px; align-items: center; }
+.ag-feed-page .ag-feed-author > div > span { line-height: 1.45; }
+.ag-feed-page .ag-feed-compose-footer > span { max-width: 620px; }
+.ag-feed-page :is(.ag-feed-question-status, .ag-feed-category, .ag-feed-voice-tag, .ag-feed-filter) { white-space: normal; }
+@media (max-width: 640px) {
+  .ag-feed-page :is(.ag-feed-signal small, .ag-feed-signal em, .ag-feed-filter span, .ag-feed-avatars span) { font-size: .75rem; }
+  .ag-feed-page .ag-feed-compose-footer > span { font-size: .8125rem; }
+}
+
 /* Field guides: help the eye move from season cue to a practical next step. */
 .agri-guides-page { gap: 18px; }
 .agri-guides-back { min-height: 44px; border-radius: 999px; padding-inline: 12px; font-size: .875rem; }
@@ -3336,7 +3365,14 @@ button { -webkit-tap-highlight-color: transparent; }
   .agri-directory-page *, .agri-directory-page *::before, .agri-directory-page *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
 }
 
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
+}
+
 /* Keep primary top-bar controls comfortable to tap on narrow field devices. */
+.agri-skip-link { position: fixed; z-index: 120; top: max(12px, env(safe-area-inset-top)); left: 12px; transform: translateY(calc(-100% - 18px)); border: 1px solid rgb(var(--ae-leaf-200) / 28%); border-radius: var(--ae-radius-control); padding: 12px 16px; background: rgb(var(--ae-brand-950)); color: rgb(var(--ae-leaf-100)); box-shadow: var(--ae-shadow-2); font-size: .875rem; font-weight: 750; opacity: 0; transition: transform var(--ae-motion-standard), opacity var(--ae-motion-fast); }
+.agri-skip-link:focus { transform: translateY(0); opacity: 1; outline: 3px solid rgb(var(--ae-accent-500) / 70%); outline-offset: 3px; }
+.agri-main { scroll-margin-top: 5rem; }
 @media (max-width: 640px) {
   .agri-topbar-left { flex: 0 1 auto; }
   .agri-topbar .agri-mobile-menu,
@@ -3350,6 +3386,10 @@ button { -webkit-tap-highlight-color: transparent; }
   .agri-topbar .agri-command-button { width: 44px; }
   .agri-topbar .agri-breadcrumb { min-width: 0; overflow: hidden; }
   .agri-topbar .agri-breadcrumb strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .agri-skip-link { transition: none; }
 }
 
 .agri-floating-panel .agri-floating-head > button,
@@ -3484,8 +3524,205 @@ button { -webkit-tap-highlight-color: transparent; }
 .agri-role-resource-empty > button, .agri-role-resources-page .agri-overview-data-error > button { display: inline-flex; min-height: 44px; align-items: center; justify-content: center; gap: 8px; border: 1px solid rgb(var(--ae-brand-500) / 20%); border-radius: 11px; background: rgb(var(--ae-brand-50)); padding: 0 14px; color: rgb(var(--ae-brand-700)); font-weight: 800; transition: transform var(--ae-motion-fast), background-color var(--ae-motion-fast); }
 .agri-role-resource-empty > button:hover, .agri-role-resources-page .agri-overview-data-error > button:hover { transform: translateY(-1px); background: rgb(var(--ae-brand-100)); }
 .agri-role-resource-empty > button:focus-visible, .agri-role-resources-page .agri-overview-data-error > button:focus-visible { outline: 3px solid rgb(var(--ae-brand-500) / 38%); outline-offset: 3px; }
+.agri-guides-page :is(.agri-guides-hero-copy > p, .agri-guides-hero-meta, .agri-guides-season-card > p, .agri-guides-season-line, .agri-guides-section-kicker, .agri-guides-status, .agri-guides-filters button, .agri-guides-result-row, .agri-guide-feature-copy > p, .agri-guide-feature-footer, .agri-guide-timeline small, .agri-guide-feature-detail, .agri-resource-category, .agri-resource-card-body > p, .agri-resource-meta) { font-size: .875rem; line-height: 1.6; }
+.agri-guides-page .agri-guides-hero-copy > p, .agri-guides-page .agri-guides-season-card > p { max-width: 660px; }
+.agri-guides-page .agri-guides-hero-meta { gap: 10px; }
+.agri-guides-page .agri-guides-hero-meta > span { min-height: 38px; border: 1px solid rgb(255 255 255 / 14%); border-radius: 999px; padding: 7px 11px; }
+.agri-guides-page .agri-guides-season-line { align-items: center; gap: 12px; }
+.agri-guides-page .agri-guides-season-line b { font-size: 1rem; font-variant-numeric: tabular-nums; }
+.agri-guides-page .agri-guides-season-bar > span { width: 100%; height: 100%; transition: transform var(--ae-motion-standard); }
+.agri-guides-page .agri-guides-toolbar { border-color: var(--agri-line); background: var(--agri-paper); }
+.agri-guides-page .agri-guides-status { min-height: 36px; }
+.agri-guides-page .agri-guides-search input { min-height: 46px; font-size: .9375rem; }
+.agri-guides-page .agri-guides-filters { flex-wrap: wrap; gap: 6px; }
+.agri-guides-page .agri-guides-filters button { min-height: 42px; display: inline-flex; align-items: center; justify-content: center; gap: 7px; border-color: var(--agri-line); background: var(--agri-paper); padding-inline: 13px; }
+.agri-guides-page .agri-guides-filter-active { border-color: rgb(var(--ae-brand-700)) !important; }
+.agri-guides-page .agri-guide-feature { border-color: rgb(var(--ae-brand-500) / 20%); box-shadow: var(--ae-shadow-1); }
+.agri-guides-page .agri-guide-feature-copy > p { max-width: 700px; }
+.agri-guides-page .agri-guide-timeline small { font-weight: 750; }
+.agri-guides-page .agri-guide-feature-footer button, .agri-guides-page .agri-guide-feature-detail button { min-height: 44px; border-radius: 10px; padding: 0 11px; font-size: .875rem; }
+.agri-guides-page .agri-guide-feature-detail { border: 1px solid rgb(var(--ae-brand-500) / 14%); padding: 12px; }
+.agri-guides-page .agri-resource-card { overflow: hidden; border: 1px solid var(--agri-line); background: var(--agri-paper); transition: transform var(--ae-motion-standard), border-color var(--ae-motion-standard), box-shadow var(--ae-motion-standard); }
+.agri-guides-page .agri-resource-card:hover { transform: translateY(-3px); border-color: rgb(var(--ae-brand-500) / 26%); box-shadow: var(--ae-shadow-2); }
+.agri-guides-page .agri-resource-card-body h2 { font-size: 1.125rem; line-height: 1.35; }
+.agri-guides-page .agri-resource-card-body > p { color: var(--agri-muted); }
+.agri-guides-page :is(button, input):focus-visible { outline: 3px solid rgb(var(--ae-brand-500) / 48%); outline-offset: 3px; }
+.dark .agri-guides-page .agri-guides-toolbar, .dark .agri-guides-page .agri-resource-card { background: var(--agri-paper); }
+@media (max-width: 700px) { .agri-guides-page :is(.agri-guides-hero-copy > p, .agri-guides-season-card > p, .agri-guides-hero-meta, .agri-guides-season-line, .agri-guides-status, .agri-guides-filters button, .agri-guides-result-row, .agri-guide-feature-copy > p, .agri-guide-feature-footer, .agri-guide-timeline small, .agri-guide-feature-detail, .agri-resource-card-body > p, .agri-resource-meta) { font-size: .875rem; }.agri-guides-page .agri-guides-season-line { align-items: flex-start; flex-direction: column; }.agri-guides-page .agri-guides-filters { align-items: stretch; }.agri-guides-page .agri-guides-filters button { min-height: 44px; } }
+@media (prefers-reduced-motion: reduce) { .agri-guides-page .agri-resource-card, .agri-guides-page .agri-guides-season-bar > span { transition: none; }.agri-guides-page .agri-resource-card:hover { transform: none; } }
 .agri-role-resources-page .agri-role-resource-card { transition: transform var(--ae-motion-standard), box-shadow var(--ae-motion-standard), border-color var(--ae-motion-standard); }
 .agri-role-resources-page .agri-role-resource-card:hover { transform: translateY(-3px); border-color: rgb(var(--ae-brand-500) / 24%); box-shadow: var(--ae-shadow-2); }
 .agri-role-resources-page .agri-role-resource-toolbar label:focus-within { border-color: rgb(var(--ae-brand-500) / 55%); box-shadow: 0 0 0 3px rgb(var(--ae-brand-500) / 12%); }
 .dark .agri-role-resource-empty { background: var(--agri-paper); }
 @media (prefers-reduced-motion: reduce) { .agri-role-resources-page .agri-role-resource-card, .agri-role-resource-empty > button { transition: none; }.agri-role-resources-page .agri-role-resource-card:hover, .agri-role-resource-empty > button:hover { transform: none; } }
+
+/* Persistent navigation legibility — compact but comfortably readable at every width. */
+.agri-app .agri-sidebar-item-content strong { font-size: .9375rem; line-height: 1.35; }
+.agri-app .agri-sidebar-item-content small { font-size: .8125rem; line-height: 1.4; }
+.agri-app .agri-sidebar-group > p, .agri-app .agri-territory-copy small { font-size: .75rem; line-height: 1.4; }
+.agri-app .agri-territory-copy strong, .agri-app .agri-network-copy strong, .agri-app .agri-sidebar-account strong { font-size: .875rem; }
+.agri-app .agri-sidebar-badge { font-size: .75rem; }
+.agri-app .agri-network-copy small, .agri-app .agri-sidebar-account small { font-size: .75rem; line-height: 1.45; }
+.agri-app .agri-sidebar-tools button, .agri-app .agri-sidebar-logout, .agri-app .agri-sidebar-collapse { font-size: .8125rem; }
+
+/* Auth polish — readable role choices and clear feedback at the first touchpoint. */
+.agri-auth-shell .agri-auth-methods button { min-height: 44px; font-size: .875rem; }
+.agri-auth-shell .agri-auth-role { min-height: 116px; gap: 4px; }
+.agri-auth-shell .agri-auth-role strong { font-size: .9375rem; }
+.agri-auth-shell .agri-auth-role small { font-size: .8125rem; line-height: 1.45; }
+.agri-auth-shell .agri-auth-error { font-size: .875rem; line-height: 1.55; }
+.agri-auth-shell .agri-auth-forgot, .agri-auth-shell .agri-auth-guest { min-height: 46px; font-size: .875rem; }
+.agri-auth-shell .agri-auth-trust { font-size: .8125rem; line-height: 1.5; }
+.agri-auth-shell .agri-auth-plan-picker > span { font-size: .875rem; }
+.agri-auth-shell .agri-auth-plan-picker button small { font-size: .8125rem; line-height: 1.4; }
+@media (max-width: 640px) {
+  .agri-auth-shell .agri-auth-role { min-height: 82px; }
+  .agri-auth-shell .agri-auth-role strong { font-size: .9375rem; }
+  .agri-auth-shell .agri-auth-role small { font-size: .8125rem; }
+}
+
+/* Billing states — preserve page structure while loading and make recovery obvious. */
+.agri-billing-alert { display: flex; align-items: center; justify-content: space-between; gap: 14px; }
+.agri-billing-alert > span { min-width: 0; }
+.agri-billing-alert > button { min-height: 44px; flex: 0 0 auto; border: 1px solid rgb(var(--ae-danger) / 25%); border-radius: var(--ae-radius-control); background: var(--agri-paper); padding-inline: 13px; color: rgb(var(--ae-danger)); font: inherit; font-size: .875rem; font-weight: 750; transition: background-color var(--ae-motion-fast), transform var(--ae-motion-fast); }
+.agri-billing-alert > button:hover:not(:disabled) { transform: translateY(-1px); background: rgb(var(--ae-danger) / 6%); }
+.agri-billing-alert > button:focus-visible { outline: 3px solid rgb(var(--ae-danger) / 30%); outline-offset: 3px; }
+.agri-billing-alert > button:disabled { cursor: wait; opacity: .6; }
+.agri-billing-loading { display: grid; min-height: 0; gap: 14px; border: 0; background: transparent; padding: 0; }
+.agri-billing-skeleton-intro, .agri-billing-skeleton-history { display: grid; gap: 10px; border: 1px solid var(--agri-line); border-radius: var(--ae-radius-surface); background: var(--agri-card); padding: 20px; }
+.agri-billing-skeleton-intro i, .agri-billing-skeleton-plans i, .agri-billing-skeleton-history i { display: block; border-radius: 8px; background: rgb(var(--ae-brand-500) / 10%); animation: agri-skeleton-pulse 1.4s ease-in-out infinite alternate; }
+.agri-billing-skeleton-intro i:first-child { width: 22%; height: 12px; }
+.agri-billing-skeleton-intro i:nth-child(2) { width: min(58%, 440px); height: 25px; animation-delay: 100ms; }
+.agri-billing-skeleton-intro i:nth-child(3) { width: min(78%, 620px); height: 12px; animation-delay: 180ms; }
+.agri-billing-skeleton-plans { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+.agri-billing-skeleton-plans i { min-height: 310px; border: 1px solid var(--agri-line); border-radius: var(--ae-radius-surface); background: linear-gradient(180deg, rgb(var(--ae-brand-500) / 9%) 0 4px, var(--agri-card) 4px 100%); animation-delay: 80ms; }
+.agri-billing-skeleton-plans i:nth-child(2) { animation-delay: 160ms; }
+.agri-billing-skeleton-plans i:nth-child(3) { animation-delay: 240ms; }
+.agri-billing-skeleton-history { min-height: 100px; align-content: center; }
+.agri-billing-skeleton-history i:first-child { width: 24%; height: 18px; }
+.agri-billing-skeleton-history i:nth-child(2) { width: 100%; height: 34px; animation-delay: 120ms; }
+.dark .agri-billing-skeleton-intro i, .dark .agri-billing-skeleton-plans i, .dark .agri-billing-skeleton-history i { background-color: rgb(var(--ae-leaf-200) / 10%); }
+.dark .agri-billing-skeleton-plans i { background: linear-gradient(180deg, rgb(var(--ae-leaf-200) / 10%) 0 4px, var(--agri-card) 4px 100%); }
+@media (max-width: 760px) { .agri-billing-skeleton-plans { grid-template-columns: 1fr; }.agri-billing-skeleton-plans i { min-height: 210px; } }
+@media (max-width: 520px) { .agri-billing-alert { align-items: stretch; flex-direction: column; }.agri-billing-alert > button { width: 100%; }.agri-billing-skeleton-intro, .agri-billing-skeleton-history { padding: 16px; }.agri-billing-skeleton-intro i:first-child { width: 44%; }.agri-billing-skeleton-intro i:nth-child(2) { width: 80%; } }
+@media (prefers-reduced-motion: reduce) { .agri-billing-skeleton-intro i, .agri-billing-skeleton-plans i, .agri-billing-skeleton-history i { animation: none; }.agri-billing-alert > button { transition: none; } }
+
+/* Institutional cockpit legibility — dense data remains readable and operable. */
+.agri-main .agri-institutional-page .agri-institutional-hero-meta { font-size: .875rem; }
+.agri-main .agri-institutional-page .agri-institutional-command-chip small { font-size: .8125rem; }
+.agri-main .agri-institutional-page .agri-institutional-context p,
+.agri-main .agri-institutional-page .agri-institutional-select select,
+.agri-main .agri-institutional-page .agri-institutional-periods button,
+.agri-main .agri-institutional-page .agri-institutional-export { font-size: .875rem; }
+.agri-main .agri-institutional-page .agri-institutional-select,
+.agri-main .agri-institutional-page .agri-institutional-periods,
+.agri-main .agri-institutional-page .agri-institutional-export { min-height: 46px; }
+.agri-main .agri-institutional-page .agri-institutional-periods button { min-height: 40px; min-width: 54px; }
+.agri-main .agri-institutional-page .agri-institutional-kpi-label { font-size: .875rem; line-height: 1.45; }
+.agri-main .agri-institutional-page .agri-institutional-kpi small,
+.agri-main .agri-institutional-page .agri-kpi-trend,
+.agri-main .agri-institutional-page .agri-institutional-command-core span,
+.agri-main .agri-institutional-page .agri-institutional-coverage-ring span,
+.agri-main .agri-institutional-page .agri-institutional-coverage-list span,
+.agri-main .agri-institutional-page .agri-institutional-alert-level,
+.agri-main .agri-institutional-page .agri-institutional-alert-content small,
+.agri-main .agri-institutional-page .agri-institutional-live,
+.agri-main .agri-institutional-page .agri-institutional-map-legend,
+.agri-main .agri-institutional-page .agri-institutional-improvement,
+.agri-main .agri-institutional-page .agri-sponsor-region span { font-size: .8125rem; line-height: 1.5; }
+.agri-main .agri-institutional-page .agri-institutional-alert-content p,
+.agri-main .agri-institutional-page .agri-institutional-card-head p,
+.agri-main .agri-institutional-page .agri-sponsor-card p { font-size: .875rem; line-height: 1.6; }
+.agri-main .agri-institutional-page .agri-institutional-alert-content strong { font-size: 1rem; line-height: 1.4; }
+.agri-main .agri-institutional-page .agri-sponsor-region strong,
+.agri-main .agri-institutional-page .agri-sponsor-region b { font-size: .875rem; }
+.agri-main .agri-institutional-page .agri-institutional-all-alerts,
+.agri-main .agri-institutional-page .agri-sponsor-action { min-height: 46px; font-size: .875rem; }
+.agri-main .agri-institutional-page :is(button, select):focus-visible { outline: 3px solid rgb(var(--ae-brand-500) / 48%); outline-offset: 3px; }
+.agri-main .agri-institutional-page :is(button, select):disabled { cursor: not-allowed; opacity: .58; }
+.agri-main .agri-institutional-page .recharts-cartesian-axis-tick-value { font-size: .8125rem; }
+.agri-main .agri-institutional-page .recharts-tooltip-wrapper > div { font-size: .875rem !important; }
+@media (max-width: 700px) {
+  .agri-main .agri-institutional-page .agri-institutional-periods button { min-height: 42px; min-width: 48px; padding-inline: 8px; }
+  .agri-main .agri-institutional-page .agri-institutional-kpi-label { font-size: .8125rem; }
+  .agri-main .agri-institutional-page .agri-institutional-kpi small { font-size: .75rem; }
+}
+
+/* SOS form — keep the critical choices and consent readable under pressure. */
+.ag-sos-page .ag-sos-steps > span { font-size: .8125rem; }
+.ag-sos-page .ag-sos-card-kicker { font-size: .75rem; letter-spacing: .1em; }
+.ag-sos-page .ag-sos-kind { min-height: 88px; }
+.ag-sos-page .ag-sos-kind strong { font-size: .9375rem; line-height: 1.35; }
+.ag-sos-page .ag-sos-kind small { font-size: .8125rem; line-height: 1.45; }
+.ag-sos-page .ag-sos-fields label,
+.ag-sos-page .ag-sos-priority-label { font-size: .9375rem; line-height: 1.45; }
+.ag-sos-page .ag-sos-fields input,
+.ag-sos-page .ag-sos-fields textarea { font-size: .9375rem; line-height: 1.55; }
+.ag-sos-page .ag-sos-priority { min-height: 48px; font-size: .875rem; }
+.ag-sos-page .ag-sos-consent { min-height: 48px; font-size: .875rem; line-height: 1.55; }
+.ag-sos-page .ag-sos-location { min-height: 64px; }
+.ag-sos-page .ag-sos-location strong { font-size: .9375rem; }
+.ag-sos-page .ag-sos-location small { font-size: .8125rem; line-height: 1.45; }
+.ag-sos-page .ag-sos-submit-hint,
+.ag-sos-page .ag-sos-reassurance,
+.ag-sos-page .ag-sos-history-item small,
+.ag-sos-page .ag-sos-history > p { font-size: .875rem; line-height: 1.55; }
+.ag-sos-page .ag-sos-queue-head,
+.ag-sos-page .ag-sos-queue-item small,
+.ag-sos-page .ag-sos-expert-queue > .ag-sos-empty-state { font-size: .8125rem; line-height: 1.5; }
+.ag-sos-page .ag-sos-queue-item strong { font-size: .9375rem; }
+.ag-sos-page .ag-sos-queue-item b { font-size: .8125rem; }
+.ag-sos-page :is(button, input, textarea):disabled { cursor: not-allowed; opacity: .62; }
+@media (max-width: 640px) {
+  .ag-sos-page .ag-sos-steps > span { gap: 5px; padding-inline: 5px; font-size: .75rem; }
+  .ag-sos-page .ag-sos-steps > span b { width: 22px; height: 22px; font-size: .75rem; }
+  .ag-sos-page .ag-sos-kind { min-height: 78px; }
+  .ag-sos-page .ag-sos-kind strong { font-size: .9375rem; }
+  .ag-sos-page .ag-sos-consent { align-items: flex-start; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ag-sos-page .ag-sos-card, .ag-sos-page .ag-sos-kind, .ag-sos-page .ag-sos-location, .ag-sos-page .ag-sos-submit { transition: none; }
+  .ag-sos-page :is(.ag-sos-kind, .ag-sos-location, .ag-sos-submit):hover { transform: none; }
+}
+
+/* Safe-area behavior for bottom-sheet dialogs on notch and home-indicator devices. */
+@media (max-width: 640px) {
+  .agri-settings-overlay {
+    padding: max(8px, env(safe-area-inset-top)) max(8px, env(safe-area-inset-right)) max(8px, env(safe-area-inset-bottom)) max(8px, env(safe-area-inset-left));
+  }
+  .agri-settings-overlay .agri-action-modal {
+    max-height: min(92dvh, calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 16px));
+    overscroll-behavior: contain;
+  }
+}
+
+.agri-command-modal .agri-command-list button.agri-command-option-active {
+  transform: translateX(2px);
+  border-color: rgb(var(--ae-brand-500) / 22%);
+  background: rgb(var(--ae-brand-50) / 82%);
+}
+.dark .agri-command-modal .agri-command-list button.agri-command-option-active {
+  background: rgb(var(--ae-brand-800) / 68%);
+}
+
+/* Composer controls: readable labels and reliable touch targets, including voice capture. */
+.ag-feed-composer .ag-feed-compose-mode button { min-height: 44px; padding-inline: 15px; font-size: .875rem; }
+.ag-feed-composer .ag-feed-composer-status button { min-height: 44px; min-width: 44px; }
+.ag-feed-composer .ag-feed-compose-grid label,
+.ag-feed-composer .ag-feed-compose-body > label { font-size: .875rem; line-height: 1.45; }
+.ag-feed-composer .ag-feed-compose-grid :is(input, select),
+.ag-feed-composer .ag-feed-compose-body textarea { font-size: .9375rem; }
+.ag-feed-composer :is(button, input, select, textarea):focus-visible { outline: 3px solid rgb(var(--ae-brand-500) / 52%); outline-offset: 3px; }
+.ag-feed-composer .ag-button-secondary,
+.ag-feed-composer .ag-button-emergency { min-height: 48px; font-size: .9375rem; }
+.ag-feed-composer .ag-feed-compose-body .text-xs { font-size: .8125rem; line-height: 1.55; }
+@media (max-width: 640px) {
+  .ag-feed-composer { padding: 16px; }
+  .ag-feed-composer-head { flex-wrap: wrap; }
+  .ag-feed-composer-status { width: 100%; justify-content: space-between; }
+  .ag-feed-composer-status > span { font-size: .8125rem; }
+  .ag-feed-compose-mode { width: 100%; }
+  .ag-feed-composer .ag-feed-compose-mode button { flex: 1; justify-content: center; }
+  .ag-feed-compose-grid { grid-template-columns: minmax(0, 1fr); }
+  .ag-feed-composer .ag-feed-compose-body textarea { min-height: 120px; }
+}

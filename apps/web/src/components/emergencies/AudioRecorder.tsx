@@ -22,21 +22,40 @@ export function AudioRecorder({ onRecordingChange }: AudioRecorderProps) {
     return () => window.clearInterval(timer);
   }, [isRecording]);
 
-  useEffect(() => () => {
-    streamRef.current?.getTracks().forEach((track) => track.stop());
-    if (audioUrl) URL.revokeObjectURL(audioUrl);
+  useEffect(() => {
+    const activeStream = streamRef.current;
+    return () => {
+      const recorder = recorderRef.current;
+      if (recorder) {
+        recorder.onstop = null;
+        if (recorder.state !== 'inactive') recorder.stop();
+      }
+      (activeStream ?? streamRef.current)?.getTracks().forEach((track) => track.stop());
+      if (audioUrl) URL.revokeObjectURL(audioUrl);
+    };
   }, [audioUrl]);
 
   async function startRecording() {
     setError(null);
     if (!navigator.mediaDevices?.getUserMedia) {
-      setError('Votre navigateur ne permet pas l’enregistrement audio.');
+      setError(window.isSecureContext
+        ? 'Votre navigateur ne permet pas l’enregistrement audio. Essayez un navigateur récent.'
+        : 'Le micro nécessite une connexion sécurisée (HTTPS). Ouvrez AgriExpert via son adresse HTTPS.');
+      return;
+    }
+    if (typeof MediaRecorder === 'undefined') {
+      setError('L’enregistrement vocal n’est pas pris en charge par ce navigateur. Essayez Chrome, Edge ou Safari récent.');
       return;
     }
 
+    let stream: MediaStream | null = null;
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const recorder = new MediaRecorder(stream);
+      const acquiredStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      stream = acquiredStream;
+      streamRef.current = acquiredStream;
+      const preferredType = ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4', 'audio/ogg;codecs=opus']
+        .find((type) => MediaRecorder.isTypeSupported(type));
+      const recorder = new MediaRecorder(acquiredStream, preferredType ? { mimeType: preferredType } : undefined);
       chunksRef.current = [];
       recorder.ondataavailable = (event) => {
         if (event.data.size > 0) chunksRef.current.push(event.data);
@@ -46,22 +65,34 @@ export function AudioRecorder({ onRecordingChange }: AudioRecorderProps) {
         const url = URL.createObjectURL(blob);
         setAudioUrl(url);
         onRecordingChange?.(blob);
-        stream.getTracks().forEach((track) => track.stop());
+        acquiredStream.getTracks().forEach((track) => track.stop());
         streamRef.current = null;
+        recorderRef.current = null;
       };
-      streamRef.current = stream;
       recorderRef.current = recorder;
       recorder.start();
       setDuration(0);
       setIsRecording(true);
-    } catch {
-      setError('L’accès au microphone a été refusé. Autorisez-le pour envoyer une note vocale.');
+    } catch (reason) {
+      stream?.getTracks().forEach((track) => track.stop());
+      streamRef.current = null;
+      const errorName = reason instanceof DOMException ? reason.name : '';
+      if (errorName === 'NotAllowedError' || errorName === 'SecurityError') {
+        setError('L’accès au microphone a été refusé. Autorisez-le dans les réglages du navigateur, puis réessayez.');
+      } else if (errorName === 'NotFoundError' || errorName === 'DevicesNotFoundError') {
+        setError('Aucun microphone n’a été détecté sur cet appareil.');
+      } else if (errorName === 'NotReadableError' || errorName === 'TrackStartError') {
+        setError('Le microphone est déjà utilisé par une autre application. Fermez-la puis réessayez.');
+      } else {
+        setError('Impossible de démarrer l’enregistrement. Vérifiez le microphone et réessayez.');
+      }
     }
   }
 
   function stopRecording() {
-    recorderRef.current?.stop();
-    recorderRef.current = null;
+    const recorder = recorderRef.current;
+    if (!recorder || recorder.state === 'inactive') return;
+    recorder.stop();
     setIsRecording(false);
   }
 
@@ -73,14 +104,20 @@ export function AudioRecorder({ onRecordingChange }: AudioRecorderProps) {
     onRecordingChange?.(null);
   }
 
-  function togglePlayback() {
+  async function togglePlayback() {
     if (!audioRef.current) return;
     if (isPlaying) {
       audioRef.current.pause();
       setIsPlaying(false);
     } else {
-      void audioRef.current.play();
-      setIsPlaying(true);
+      setError(null);
+      try {
+        await audioRef.current.play();
+        setIsPlaying(true);
+      } catch {
+        setIsPlaying(false);
+        setError('La note vocale ne peut pas être lue par ce navigateur. Vous pouvez tout de même la transmettre.');
+      }
     }
   }
 
@@ -94,7 +131,7 @@ export function AudioRecorder({ onRecordingChange }: AudioRecorderProps) {
           <p className="text-sm font-bold text-obsidian-900 dark:text-cream-50">Ajouter une note vocale</p>
           <p className="mt-1 text-xs leading-5 text-obsidian-600 dark:text-cream-300">Décrivez les symptômes ou les dégâts dans votre langue la plus confortable.</p>
         </div>
-        {isRecording && <span className="rounded-full bg-danger-50 px-2 py-1 text-[10px] font-bold text-danger-600 dark:bg-danger-500/10 dark:text-danger-500">REC {formatDuration(duration)}</span>}
+        {isRecording && <span role="status" aria-label={`Enregistrement en cours, ${formatDuration(duration)}`} className="rounded-full bg-danger-50 px-2 py-1 text-[10px] font-bold text-danger-600 dark:bg-danger-500/10 dark:text-danger-500">REC {formatDuration(duration)}</span>}
       </div>
 
       {!isRecording && !audioUrl && (
@@ -117,11 +154,11 @@ export function AudioRecorder({ onRecordingChange }: AudioRecorderProps) {
           <div className="min-w-0 flex-1"><p className="text-xs font-bold text-obsidian-800 dark:text-cream-100">Note vocale prête</p><p className="text-[11px] text-obsidian-600 dark:text-cream-300">{formatDuration(duration)} · audio sécurisé</p></div>
           <CheckCircle2 className="h-5 w-5 text-success-600" />
           <button type="button" className="ag-button-ghost min-h-10 min-w-10 px-2.5" onClick={resetRecording} aria-label="Supprimer la note vocale"><RotateCcw className="h-4 w-4" /></button>
-          <audio ref={audioRef} src={audioUrl} onEnded={() => setIsPlaying(false)} className="hidden" />
+          <audio ref={audioRef} src={audioUrl} onEnded={() => setIsPlaying(false)} onPause={() => setIsPlaying(false)} onError={() => { setIsPlaying(false); setError('La lecture de cette note vocale a échoué. Vous pouvez tout de même la transmettre.'); }} className="hidden" />
         </div>
       )}
 
-      {error && <p className="mt-3 flex items-start gap-2 text-xs font-medium leading-5 text-danger-600 dark:text-danger-500"><AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />{error}</p>}
+      {error && <p className="mt-3 flex items-start gap-2 text-xs font-medium leading-5 text-danger-600 dark:text-danger-500" role="alert"><AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />{error}</p>}
     </div>
   );
 }

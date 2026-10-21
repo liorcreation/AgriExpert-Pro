@@ -53,7 +53,7 @@ const categoryLabels: Record<FeedFilter, string> = {
   apiculture: 'Apiculture',
 };
 
-export function FeedPage({ role, onBack, onNavigate, openComposerRequest = false, onComposerRequestHandled }: { role: UserRole; onBack: () => void; onNavigate?: (key: NavigationKey) => void; openComposerRequest?: boolean; onComposerRequestHandled?: () => void }) {
+export function FeedPage({ role, onBack, onNavigate, openComposerRequest = false, initialComposerMode = 'text', onComposerRequestHandled }: { role: UserRole; onBack: () => void; onNavigate?: (key: NavigationKey) => void; openComposerRequest?: boolean; initialComposerMode?: 'text' | 'voice'; onComposerRequestHandled?: () => void }) {
   const [filter, setFilter] = useState<FeedFilter>('all');
   const [search, setSearch] = useState('');
   const [questions, setQuestions] = useState<FeedQuestion[]>(isApiConfigured ? [] : initialQuestions);
@@ -182,7 +182,7 @@ export function FeedPage({ role, onBack, onNavigate, openComposerRequest = false
       </div>
 
       <div className={isOnline ? 'ag-feed-sync-banner ag-feed-sync-online' : 'ag-feed-sync-banner ag-feed-sync-offline'}><span /><strong>{isOnline ? 'Réseau disponible' : 'Mode hors-ligne'}</strong><small>{isOnline ? (offlineCount ? `${offlineCount} brouillon(s) synchronisé(s)` : 'Vos questions seront synchronisées automatiquement') : 'Questions et photos enregistrées sur cet appareil'}</small>{offlineCount > 0 && <span className="ag-feed-sync-count">{offlineCount}</span>}</div>
-      {composerOpen && <QuestionComposer onPublished={addQuestion} onClose={() => setComposerOpen(false)} />}
+      {composerOpen && <QuestionComposer initialMode={initialComposerMode} onPublished={addQuestion} onClose={() => setComposerOpen(false)} />}
 
       <div className="ag-feed-layout">
         <main className="ag-feed-main">

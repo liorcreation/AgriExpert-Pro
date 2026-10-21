@@ -16,14 +16,14 @@ export function BillingPage({ onBack }: { onBack: () => void }) {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
   const [checkoutError, setCheckoutError] = useState('');
-  const load = () => { setLoading(true); void getBillingOverview().then((response) => setOverview(response.data)).catch((requestError) => setError(requestError instanceof Error ? requestError.message : 'Impossible de charger la facturation.')).finally(() => setLoading(false)); };
+  const load = () => { setLoading(true); setError(''); void getBillingOverview().then((response) => setOverview(response.data)).catch((requestError) => setError(requestError instanceof Error ? requestError.message : 'Impossible de charger la facturation.')).finally(() => setLoading(false)); };
   useEffect(load, []);
 
   const currentPlan = useMemo(() => overview?.plans.find((plan) => plan.code === overview.currentPlan), [overview]);
   return <div className="agri-billing-page">
     <motion.header className="agri-billing-hero" initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: .45 }}><div className="agri-billing-hero-copy"><button type="button" className="agri-soft-action" onClick={onBack}>← Retour au tableau de bord</button><span className="agri-section-kicker">ESPACE COMMERCIAL SÉCURISÉ</span><h1>Une offre qui grandit avec votre terrain.</h1><p>Choisissez l’accès adapté à votre activité, suivez vos paiements et retrouvez vos reçus depuis un espace unique, en franc CFA (XOF).</p><div className="agri-billing-hero-points"><span><CheckCircle2 className="h-4 w-4" /> Activation après confirmation</span><span><ShieldCheck className="h-4 w-4" /> Données protégées</span></div></div><div className="agri-billing-hero-mark"><div className="agri-billing-orbit agri-billing-orbit-one" /><div className="agri-billing-orbit agri-billing-orbit-two" /><span className="agri-billing-hero-icon"><WalletCards className="h-7 w-7" /></span><strong>Facturation prête</strong><small>Le serveur confirme chaque paiement avant d’activer une formule.</small></div></motion.header>
-    {error && <div className="agri-billing-alert" role="alert">{error}</div>}
-    {loading ? <div className="agri-billing-loading"><RefreshCw className="h-4 w-4 animate-spin" /> Chargement de votre espace commercial…</div> : overview && <>
+    {error && <div className="agri-billing-alert" role="alert"><span>{error}</span><button type="button" onClick={load} disabled={loading}>{loading ? 'Actualisation…' : 'Réessayer'}</button></div>}
+    {loading ? <BillingLoading /> : overview && <>
       {!overview.storageReady && <div className="agri-billing-alert"><LockKeyhole className="inline h-4 w-4" /> La facturation est en cours de préparation technique. Aucun paiement ne peut être lancé tant que l’espace serveur n’est pas activé.</div>}
       <motion.section className="agri-billing-status" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: .08, duration: .35 }}><div className="agri-billing-status-icon"><CheckCircle2 className="h-5 w-5" /></div><div><span>FORMULE ACTUELLE</span><strong>{currentPlan?.name ?? overview.currentPlan}</strong><small>{overview.currentPlan === 'free' ? 'Accès essentiel actif. Aucun paiement demandé.' : 'Votre accès dépend de l’état de votre abonnement.'}</small></div><span className="agri-billing-state">{overview.subscription?.status ?? 'active'}</span></motion.section>
       <div className="agri-billing-section-intro"><div><span className="agri-section-kicker">VOTRE CHOIX</span><h2>Des outils pensés pour avancer.</h2></div><p>Les offres payantes restent fermées tant que le prix et les conditions commerciales ne sont pas validés.</p></div>
@@ -34,6 +34,10 @@ export function BillingPage({ onBack }: { onBack: () => void }) {
       {overview.isAdmin && <BillingAdmin plans={overview.plans} onSaved={load} />}
     </>}
   </div>;
+}
+
+function BillingLoading() {
+  return <div className="agri-billing-loading" role="status" aria-label="Chargement de votre espace commercial" aria-busy="true"><span className="sr-only">Chargement de votre espace commercial…</span><div className="agri-billing-skeleton-intro" aria-hidden="true"><i /><i /><i /></div><div className="agri-billing-skeleton-plans" aria-hidden="true"><i /><i /><i /></div><div className="agri-billing-skeleton-history" aria-hidden="true"><i /><i /></div></div>;
 }
 
 function PlanCard({ plan, index, current, checkoutConfigured, onCheckout }: { plan: BillingOverview['plans'][number]; index: number; current: boolean; checkoutConfigured: boolean; onCheckout: (code: 'pro' | 'institution') => Promise<void> }) {
