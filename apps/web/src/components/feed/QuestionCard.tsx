@@ -1,24 +1,56 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { motion } from 'framer-motion';
-import { BadgeCheck, Camera, CheckCircle2, Clock3, MapPin, MessageCircle, PlayCircle, ThumbsUp } from 'lucide-react';
+import { BadgeCheck, Camera, CheckCircle2, Clock3, ImageOff, MapPin, MessageCircle, PlayCircle, RefreshCw, ThumbsUp } from 'lucide-react';
 import { feedCategoryLabels } from '../../data/feed';
 import type { FeedQuestion } from '../../types/feed';
 import { mediaUrl } from '../../lib/api';
 import { AudioResponsePlayer } from './AudioResponsePlayer';
 
-export function QuestionCard({ question, index, onReply, onReaction }: { question: FeedQuestion; index: number; onReply: () => void; onReaction?: (reacted: boolean) => Promise<void> | void }) {
+export function QuestionCard({ question, index, onAskExpert, onReaction }: { question: FeedQuestion; index: number; onAskExpert: () => void; onReaction?: (reacted: boolean) => Promise<void> | void }) {
   const [liked, setLiked] = useState(Boolean(question.reacted));
+  const [reactionPending, setReactionPending] = useState(false);
+  const [reactionError, setReactionError] = useState('');
   const initials = question.authorName.split(' ').map((item) => item[0]).join('').slice(0, 2);
+
+  async function toggleReaction() {
+    if (reactionPending) return;
+    const previous = liked;
+    const next = !previous;
+    setLiked(next);
+    setReactionError('');
+    setReactionPending(true);
+    try {
+      await onReaction?.(next);
+    } catch {
+      setLiked(previous);
+      setReactionError('Votre réaction n’a pas été enregistrée. Vérifiez votre connexion et réessayez.');
+    } finally {
+      setReactionPending(false);
+    }
+  }
 
   return (
     <motion.article className="ag-feed-question" initial={{ opacity: 0, y: 12 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, amount: .15 }} transition={{ duration: .35, delay: Math.min(index * .05, .18) }}>
       <div className="ag-feed-question-top"><div className="ag-feed-author"><span className="ag-feed-author-avatar">{initials}</span><div><strong>{question.authorName}</strong><span><MapPin className="h-3 w-3" />{question.authorLocation}<i /> <Clock3 className="h-3 w-3" />{question.createdAt}</span></div></div><span className="ag-feed-question-status">{question.answer ? <><CheckCircle2 className="h-3.5 w-3.5" /> Suivi par un expert</> : <><Clock3 className="h-3.5 w-3.5" /> En attente</>}</span></div>
       <div className="ag-feed-question-tags"><span className={`ag-feed-category ag-feed-category-${question.category}`}>{feedCategoryLabels[question.category]}</span>{question.hasVoice && <span className="ag-feed-voice-tag"><PlayCircle className="h-3 w-3" /> Note vocale</span>}{question.hasPhoto && <span className="ag-feed-voice-tag"><Camera className="h-3 w-3" /> Photo diagnostic</span>}</div>
-      <h2>{question.title}</h2><p className="ag-feed-question-body">{question.body}</p>{question.voiceUrl && <div className="ag-feed-question-audio"><div><PlayCircle className="h-4 w-4" /><span>Note vocale du producteur</span></div><audio controls preload="metadata" src={question.voiceUrl} /></div>}{question.voiceTranscript && <details className="ag-feed-transcript-view"><summary>Afficher la transcription automatique · {question.voiceTranscriptLanguage === 'fr' ? 'Français' : 'à vérifier'}</summary><p>{question.voiceTranscript}</p><small>Texte automatique à vérifier avec le producteur, surtout pour les termes locaux.</small></details>}{(question.photoUrl || question.photoPreview) && <img className="ag-feed-question-photo" src={question.photoUrl ?? question.photoPreview} alt={`Photo de diagnostic : ${question.title}`} loading="lazy" />}
-      <div className="ag-feed-question-footer"><span className="ag-feed-answer-count"><MessageCircle className="h-4 w-4" /> {question.answerCount} réponse{question.answerCount > 1 ? 's' : ''}</span><button type="button" className={liked ? 'ag-feed-question-action ag-feed-question-action-liked' : 'ag-feed-question-action'} onClick={() => { const next = !liked; setLiked(next); void onReaction?.(next); }} aria-pressed={liked}><ThumbsUp className="h-3.5 w-3.5" /> {liked ? `Utile${question.usefulCount ? ` · ${question.usefulCount}` : ''}` : 'Marquer utile'}</button><button type="button" className="ag-feed-reply" onClick={onReply}>Répondre <span>→</span></button></div>
-      {question.answer ? <div className="ag-feed-answer"><div className="ag-feed-answer-head"><span className="ag-feed-expert-avatar">{question.answer.initials}</span><div><div className="ag-feed-answer-name"><strong>{question.answer.expertName}</strong>{question.answer.certified && <span><BadgeCheck className="h-3 w-3" /> Expert certifié</span>}</div><small>{question.answer.expertRole} · {question.answer.createdAt}</small></div><ShieldMark /></div><p className="ag-feed-answer-body">{question.answer.body}</p>{question.answer.voiceAssetId ? <div className="ag-feed-question-audio ag-feed-answer-audio"><div><PlayCircle className="h-4 w-4" /><span>Réponse vocale de l’expert</span></div><audio controls preload="metadata" src={mediaUrl(question.answer.voiceAssetId)} /></div> : <AudioResponsePlayer text={question.answer.body} language={question.answer.language} />}</div> : <div className="ag-feed-pending"><span><Clock3 className="h-4 w-4" /></span><div><strong>Question ouverte à la communauté</strong><small>Un spécialiste disponible pourra vous répondre prochainement.</small></div><button type="button" onClick={onReply}>Proposer une réponse</button></div>}
+      <h2>{question.title}</h2><p className="ag-feed-question-body">{question.body}</p>{question.voiceUrl && <QuestionAudio src={question.voiceUrl} label="Note vocale du producteur" />}{question.voiceTranscript && <details className="ag-feed-transcript-view"><summary>Afficher la transcription automatique · {question.voiceTranscriptLanguage === 'fr' ? 'Français' : 'à vérifier'}</summary><p>{question.voiceTranscript}</p><small>Texte automatique à vérifier avec le producteur, surtout pour les termes locaux.</small></details>}{(question.photoUrl || question.photoPreview) && <QuestionPhoto src={question.photoUrl ?? question.photoPreview!} title={question.title} />}
+      <div className="ag-feed-question-footer"><span className="ag-feed-answer-count"><MessageCircle className="h-4 w-4" /> {question.answerCount} réponse{question.answerCount > 1 ? 's' : ''}</span><button type="button" className={liked ? 'ag-feed-question-action ag-feed-question-action-liked' : 'ag-feed-question-action'} onClick={() => void toggleReaction()} aria-pressed={liked} aria-label={liked ? `Retirer votre réaction utile à ${question.title}` : `Marquer la question « ${question.title} » comme utile`} disabled={reactionPending} aria-busy={reactionPending}><ThumbsUp className="h-3.5 w-3.5" /> {reactionPending ? 'Enregistrement…' : liked ? `Utile${question.usefulCount ? ` · ${question.usefulCount}` : ''}` : 'Marquer utile'}</button><button type="button" className="ag-feed-reply" onClick={onAskExpert}>Demander un conseil <span>→</span></button></div>{reactionError && <p className="ag-feed-reaction-error" role="alert">{reactionError}</p>}
+      {question.answer ? <div className="ag-feed-answer"><div className="ag-feed-answer-head"><span className="ag-feed-expert-avatar">{question.answer.initials}</span><div><div className="ag-feed-answer-name"><strong>{question.answer.expertName}</strong>{question.answer.certified && <span><BadgeCheck className="h-3 w-3" /> Expert certifié</span>}</div><small>{question.answer.expertRole} · {question.answer.createdAt}</small></div><ShieldMark /></div><p className="ag-feed-answer-body">{question.answer.body}</p>{question.answer.voiceAssetId ? <QuestionAudio src={mediaUrl(question.answer.voiceAssetId)} label="Réponse vocale de l’expert" /> : <AudioResponsePlayer text={question.answer.body} language={question.answer.language} />}</div> : <div className="ag-feed-pending"><span><Clock3 className="h-4 w-4" /></span><div><strong>Question ouverte à la communauté</strong><small>Un spécialiste disponible pourra vous répondre prochainement.</small></div><button type="button" onClick={onAskExpert}>Poser une question</button></div>}
     </motion.article>
   );
+}
+
+function QuestionPhoto({ src, title }: { src: string; title: string }) {
+  const [failed, setFailed] = useState(false);
+  const [retryKey, setRetryKey] = useState(0);
+  if (failed) return <div className="ag-feed-media-fallback" role="status"><ImageOff className="h-5 w-5" /><span><strong>Photo momentanément indisponible</strong><small>La publication est conservée. Vérifiez la connexion puis réessayez.</small></span><button type="button" onClick={() => { setFailed(false); setRetryKey((current) => current + 1); }}><RefreshCw className="h-4 w-4" /> Réessayer</button></div>;
+  return <img key={retryKey} className="ag-feed-question-photo" src={src} alt={`Photo de diagnostic : ${title}`} loading="lazy" onError={() => setFailed(true)} />;
+}
+
+function QuestionAudio({ src, label }: { src: string; label: string }) {
+  const audioRef = useRef<HTMLAudioElement>(null);
+  const [failed, setFailed] = useState(false);
+  return <div className="ag-feed-question-audio"><div><PlayCircle className="h-4 w-4" /><span>{label}</span></div><audio ref={audioRef} controls preload="metadata" src={src} onError={() => setFailed(true)} onCanPlay={() => setFailed(false)} />{failed && <p className="ag-feed-audio-error" role="alert">Lecture indisponible. Vérifiez la connexion et relancez le chargement.<button type="button" onClick={() => { setFailed(false); audioRef.current?.load(); }}>Réessayer</button></p>}</div>;
 }
 
 function ShieldMark() {

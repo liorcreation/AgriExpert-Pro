@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
-import { AlertTriangle, ArrowLeft, ArrowRight, ArrowUpRight, BriefcaseBusiness, Camera, Check, CheckCircle2, ChevronDown, CircleDot, Clock3, Filter, FileText, Flame, HelpCircle, ImagePlus, Landmark, LoaderCircle, MapPin, MessageCircle, Mic, Plus, Radio, Search, Send, Settings2, ShieldCheck, Sparkles, TrendingUp, UserRound, UsersRound, X } from 'lucide-react';
+import { AlertTriangle, ArrowLeft, ArrowRight, ArrowUpRight, BriefcaseBusiness, Camera, Check, CheckCircle2, ChevronDown, CircleDot, Clock3, Filter, FileText, Flame, HelpCircle, ImagePlus, Landmark, LoaderCircle, MapPin, MessageCircle, Mic, Plus, Radio, RefreshCw, Search, Send, Settings2, ShieldCheck, Sparkles, TrendingUp, UserRound, UsersRound, X } from 'lucide-react';
 import { initialQuestions, feedCategoryLabels } from '../../data/feed';
 import { QuestionCard } from '../../components/feed/QuestionCard';
 import { QuestionComposer } from '../../components/feed/QuestionComposer';
@@ -8,7 +8,7 @@ import type { FeedCategory, FeedQuestion } from '../../types/feed';
 import type { UserRole } from '../../types/shell';
 import type { NavigationKey } from '../../types/shell';
 import { AudioRecorder } from '../../components/emergencies/AudioRecorder';
-import { countPendingOfflineDrafts, queueOfflineDraft, syncOfflineDrafts } from '../../lib/offlineQueue';
+import { getOfflineQueueSummary, queueOfflineDraft, syncOfflineDrafts, type OfflineQueueSummary } from '../../lib/offlineQueue';
 import { getExpertCase, getExpertWorkspace, getInstitutionalDashboard, isApiConfigured, listExpertColleagues, listQuestions, mediaUrl, publishQuestion, reactToQuestion, updateEmergencyAvailability, updateExpertCase, uploadMedia, type ExpertCase, type ExpertWorkspaceData, type InstitutionalDashboardData, type PersistedQuestion } from '../../lib/api';
 
 type FeedFilter = 'all' | FeedCategory;
@@ -53,36 +53,59 @@ const categoryLabels: Record<FeedFilter, string> = {
   apiculture: 'Apiculture',
 };
 
+function normalizeSearchText(value: string) {
+  return value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLocaleLowerCase('fr');
+}
+
 export function FeedPage({ role, onBack, onNavigate, openComposerRequest = false, initialComposerMode = 'text', onComposerRequestHandled }: { role: UserRole; onBack: () => void; onNavigate?: (key: NavigationKey) => void; openComposerRequest?: boolean; initialComposerMode?: 'text' | 'voice'; onComposerRequestHandled?: () => void }) {
   const [filter, setFilter] = useState<FeedFilter>('all');
   const [search, setSearch] = useState('');
   const [questions, setQuestions] = useState<FeedQuestion[]>(isApiConfigured ? [] : initialQuestions);
   const [feedLoading, setFeedLoading] = useState(isApiConfigured);
+  const [feedRefreshing, setFeedRefreshing] = useState(false);
   const [feedError, setFeedError] = useState('');
+  const [lastFeedUpdate, setLastFeedUpdate] = useState<number | null>(null);
+  const hasLoadedFeedRef = useRef(false);
   const [composerOpen, setComposerOpen] = useState(false);
   const [sortByAnswers, setSortByAnswers] = useState(false);
   const [isOnline, setIsOnline] = useState(() => typeof navigator === 'undefined' ? true : navigator.onLine);
-  const [offlineCount, setOfflineCount] = useState(0);
+  const [offlineQueue, setOfflineQueue] = useState<OfflineQueueSummary>({ queued: 0, uploading: 0, failed: 0, pending: 0 });
+  const [retryingOffline, setRetryingOffline] = useState(false);
 
-  async function refreshOfflineCount() {
-    setOfflineCount(await countPendingOfflineDrafts());
+  async function refreshOfflineQueue() {
+    setOfflineQueue(await getOfflineQueueSummary());
+  }
+
+  async function retryOfflineQueue() {
+    if (retryingOffline || !isApiConfigured || !isOnline) return;
+    setRetryingOffline(true);
+    try {
+      await syncOfflineDrafts();
+      await refreshOfflineQueue();
+    } finally {
+      setRetryingOffline(false);
+    }
   }
 
   async function refreshQuestions() {
     if (!isApiConfigured) return;
-    setFeedLoading(true);
+    if (hasLoadedFeedRef.current) setFeedRefreshing(true);
+    else setFeedLoading(true);
     setFeedError('');
     try {
       const response = await listQuestions();
       setQuestions(response.data.map(mapPersistedQuestion));
+      hasLoadedFeedRef.current = true;
+      setLastFeedUpdate(Date.now());
     } catch (reason: unknown) {
       setFeedError(reason instanceof Error ? reason.message : 'Le fil est momentanément indisponible.');
     } finally {
       setFeedLoading(false);
+      setFeedRefreshing(false);
     }
   }
 
-  useEffect(() => { void refreshOfflineCount(); }, []);
+  useEffect(() => { void refreshOfflineQueue(); }, []);
 
   useEffect(() => {
     if (!openComposerRequest || role !== 'producer') return;
@@ -99,12 +122,12 @@ export function FeedPage({ role, onBack, onNavigate, openComposerRequest = false
     const handleOnline = async () => {
       setIsOnline(true);
       await syncOfflineDrafts();
-      await Promise.all([refreshOfflineCount(), refreshQuestions()]);
+      await Promise.all([refreshOfflineQueue(), refreshQuestions()]);
     };
     const handleOffline = () => setIsOnline(false);
     const handleBackgroundSync = () => {
       void syncOfflineDrafts().then(async () => {
-        await Promise.all([refreshOfflineCount(), refreshQuestions()]);
+        await Promise.all([refreshOfflineQueue(), refreshQuestions()]);
       });
     };
     window.addEventListener('online', handleOnline); window.addEventListener('offline', handleOffline); window.addEventListener('agriexpert:offline-sync', handleBackgroundSync);
@@ -112,11 +135,20 @@ export function FeedPage({ role, onBack, onNavigate, openComposerRequest = false
   }, []);
 
   const visibleQuestions = useMemo(() => {
-    const query = search.trim().toLowerCase();
+    const terms = normalizeSearchText(search.trim()).split(/\s+/).filter(Boolean);
     return questions
       .filter((question) => {
         const matchesFilter = filter === 'all' || question.category === filter;
-        const matchesSearch = !query || `${question.title} ${question.body} ${question.authorLocation}`.toLowerCase().includes(query);
+        const searchableText = normalizeSearchText([
+          question.title,
+          question.body,
+          question.authorName,
+          question.authorLocation,
+          question.voiceTranscript ?? '',
+          question.photoName ?? '',
+          feedCategoryLabels[question.category],
+        ].join(' '));
+        const matchesSearch = terms.every((term) => searchableText.includes(term));
         return matchesFilter && matchesSearch;
       })
       .sort((left, right) => sortByAnswers ? right.answerCount - left.answerCount : questions.indexOf(left) - questions.indexOf(right));
@@ -147,7 +179,7 @@ export function FeedPage({ role, onBack, onNavigate, openComposerRequest = false
     const newQuestion: FeedQuestion = { id: `question-${Date.now()}`, title: payload.title, body: payload.body, category: payload.category, hasVoice: payload.hasVoice, hasPhoto: payload.hasPhoto, photoName: payload.photoName, photoPreview: payload.photoPreview, authorName: 'Vous', authorLocation: 'Votre exploitation', createdAt: 'À l’instant', answerCount: 0 };
     setQuestions((current) => [newQuestion, ...current]);
     await queueOfflineDraft({ clientRequestId, title: payload.title, body: payload.body, category: payload.category, hasVoice: payload.hasVoice, hasPhoto: payload.hasPhoto, photo: payload.photo, voice: payload.voice, photoAssetId: payload.photoAssetId, voiceAssetId: payload.voiceAssetId, voiceTranscript: payload.voiceTranscript, photoName: payload.photoName, voiceName: 'question.webm' });
-    await refreshOfflineCount();
+    await refreshOfflineQueue();
     setComposerOpen(false);
   }
 
@@ -181,21 +213,22 @@ export function FeedPage({ role, onBack, onNavigate, openComposerRequest = false
         <div className="ag-feed-network-state"><span /><div><strong>{isOnline ? 'Connexion disponible' : 'Mode hors-ligne'}</strong><small>{isOnline ? 'Le fil peut être actualisé' : 'Vos brouillons restent sur cet appareil'}</small></div></div>
       </div>
 
-      <div className={isOnline ? 'ag-feed-sync-banner ag-feed-sync-online' : 'ag-feed-sync-banner ag-feed-sync-offline'}><span /><strong>{isOnline ? 'Réseau disponible' : 'Mode hors-ligne'}</strong><small>{isOnline ? (offlineCount ? `${offlineCount} brouillon(s) synchronisé(s)` : 'Vos questions seront synchronisées automatiquement') : 'Questions et photos enregistrées sur cet appareil'}</small>{offlineCount > 0 && <span className="ag-feed-sync-count">{offlineCount}</span>}</div>
+      <div className={isOnline ? 'ag-feed-sync-banner ag-feed-sync-online' : 'ag-feed-sync-banner ag-feed-sync-offline'}><span /><strong>{isOnline ? 'Réseau disponible' : 'Mode hors-ligne'}</strong><small>{offlineQueue.failed > 0 ? `${offlineQueue.failed} envoi${offlineQueue.failed > 1 ? 's' : ''} en échec · les brouillons restent sur cet appareil.` : offlineQueue.uploading > 0 ? `${offlineQueue.uploading} envoi${offlineQueue.uploading > 1 ? 's' : ''} en cours…` : offlineQueue.queued > 0 ? `${offlineQueue.queued} brouillon${offlineQueue.queued > 1 ? 's' : ''} en attente de synchronisation.` : isOnline ? 'Aucun brouillon en attente de synchronisation.' : 'Vos brouillons restent enregistrés sur cet appareil.'}</small>{offlineQueue.pending > 0 && <span className="ag-feed-sync-count" aria-label={`${offlineQueue.pending} brouillons non synchronisés`}>{offlineQueue.pending}</span>}{isOnline && isApiConfigured && offlineQueue.failed > 0 && <button type="button" className="ag-feed-sync-retry" onClick={() => void retryOfflineQueue()} disabled={retryingOffline}>{retryingOffline ? 'Nouvel essai…' : 'Réessayer'}</button>}</div>
       {composerOpen && <QuestionComposer initialMode={initialComposerMode} onPublished={addQuestion} onClose={() => setComposerOpen(false)} />}
 
       <div className="ag-feed-layout">
         <main className="ag-feed-main">
           <section className="ag-feed-toolbar" aria-label="Filtres du fil">
-            <div className="ag-feed-toolbar-top"><div className="ag-feed-toolbar-title"><span className="ag-feed-section-kicker">Explorer le réseau</span><h2>Les dernières conversations</h2></div><span className="ag-feed-live-pill"><span /> Mis à jour en direct</span></div>
+            <div className="ag-feed-toolbar-top"><div className="ag-feed-toolbar-title"><span className="ag-feed-section-kicker">Explorer le réseau</span><h2>Les dernières conversations</h2></div><div className="ag-feed-toolbar-status"><span className="ag-feed-live-pill"><span />{lastFeedUpdate ? `Actualisé à ${new Intl.DateTimeFormat('fr-FR', { hour: '2-digit', minute: '2-digit' }).format(lastFeedUpdate)}` : isApiConfigured ? 'Connexion au fil' : 'Aperçu local'}</span><button type="button" className="ag-feed-refresh-button" onClick={() => void refreshQuestions()} disabled={!isApiConfigured || feedLoading || feedRefreshing} aria-label={feedRefreshing ? 'Actualisation des discussions en cours' : 'Actualiser les discussions'} aria-busy={feedRefreshing}><RefreshCw className={feedRefreshing ? 'h-4 w-4 animate-spin' : 'h-4 w-4'} />{feedRefreshing ? 'Actualisation…' : 'Actualiser'}</button></div></div>
             <div className="ag-feed-toolbar-controls">
               <div className="ag-feed-filters"><Filter className="h-4 w-4" aria-hidden="true" />{(['all', ...Object.keys(feedCategoryLabels)] as FeedFilter[]).map((category) => <FilterChip key={category} active={filter === category} onClick={() => setFilter(category)} count={category === 'all' ? questions.length : questions.filter((question) => question.category === category).length}>{categoryLabels[category]}</FilterChip>)}</div>
-              <label className="ag-feed-search"><Search className="h-4 w-4" /><span className="sr-only">Rechercher dans le fil</span><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Rechercher un conseil…" /></label>
+              <div className="ag-feed-search"><Search className="h-4 w-4" aria-hidden="true" /><input aria-label="Rechercher dans le fil par sujet, producteur, filière ou transcription" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Rechercher un conseil…" />{search && <button type="button" className="ag-feed-search-clear" onClick={() => setSearch('')} aria-label="Effacer la recherche"><X className="h-4 w-4" /></button>}</div>
             </div>
           </section>
 
-          <div className="ag-feed-result-row"><p><strong>{visibleQuestions.length}</strong> discussion{visibleQuestions.length > 1 ? 's' : ''} dans votre réseau</p><button type="button" className="ag-feed-sort" onClick={() => setSortByAnswers((current) => !current)}><TrendingUp className="h-3.5 w-3.5" /> {sortByAnswers ? 'Plus de réponses' : 'Plus récentes'} <ArrowUpRight className="h-3.5 w-3.5" /></button></div>
-          <div className="ag-feed-question-list" aria-busy={feedLoading}>{feedLoading ? <FeedLoadingState /> : feedError && questions.length === 0 ? <FeedErrorState message={feedError} onRetry={() => void refreshQuestions()} /> : visibleQuestions.length > 0 ? visibleQuestions.map((question, index) => <QuestionCard key={question.id} question={question} index={index} onReply={openComposer} onReaction={async (reacted) => { if (!isApiConfigured || !/^\d+$/.test(question.id)) return; const result = await reactToQuestion(question.id, reacted); setQuestions((current) => current.map((item) => item.id === question.id ? { ...item, reacted, usefulCount: result.data.useful_count } : item)); }} />) : <EmptyFeed isFiltered={questions.length > 0} onReset={() => { setSearch(''); setFilter('all'); }} onCreate={openComposer} />}</div>
+          {feedError && questions.length > 0 && <div className="ag-feed-stale-alert" role="alert"><AlertTriangle className="h-5 w-5" /><span><strong>Le fil n’a pas pu être actualisé.</strong><small>Les discussions déjà chargées restent visibles. {feedError}</small></span><button type="button" onClick={() => void refreshQuestions()} disabled={feedLoading}>{feedLoading ? 'Actualisation…' : 'Réessayer'}</button></div>}
+          <div className="ag-feed-result-row"><p role="status" aria-live="polite" aria-atomic="true"><strong>{visibleQuestions.length}</strong> discussion{visibleQuestions.length > 1 ? 's' : ''} trouvée{visibleQuestions.length > 1 ? 's' : ''}</p><button type="button" className="ag-feed-sort" onClick={() => setSortByAnswers((current) => !current)} aria-label="Ordre de tri des discussions" aria-pressed={sortByAnswers}><TrendingUp className="h-3.5 w-3.5" /> {sortByAnswers ? 'Plus de réponses' : 'Plus récentes'} <ArrowUpRight className="h-3.5 w-3.5" /></button></div>
+          <div className="ag-feed-question-list" aria-busy={feedLoading || feedRefreshing}>{feedLoading ? <FeedLoadingState /> : feedError && questions.length === 0 ? <FeedErrorState message={feedError} onRetry={() => void refreshQuestions()} /> : visibleQuestions.length > 0 ? visibleQuestions.map((question, index) => <QuestionCard key={question.id} question={question} index={index} onAskExpert={openComposer} onReaction={async (reacted) => { if (!isApiConfigured || !/^\d+$/.test(question.id)) return; const result = await reactToQuestion(question.id, reacted); setQuestions((current) => current.map((item) => item.id === question.id ? { ...item, reacted, usefulCount: result.data.useful_count } : item)); }} />) : <EmptyFeed isFiltered={questions.length > 0} onReset={() => { setSearch(''); setFilter('all'); }} onCreate={openComposer} />}</div>
         </main>
 
         <aside className="ag-feed-aside">

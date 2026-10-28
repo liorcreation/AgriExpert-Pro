@@ -182,9 +182,14 @@ export async function getOfflineDrafts() {
   try { return await readDrafts(); } catch { return []; }
 }
 
-export async function countPendingOfflineDrafts() {
+export type OfflineQueueSummary = { queued: number; uploading: number; failed: number; pending: number };
+
+export async function getOfflineQueueSummary(): Promise<OfflineQueueSummary> {
   const drafts = await getOfflineDrafts();
-  return drafts.filter((draft) => draft.status !== 'synced').length;
+  const queued = drafts.filter((draft) => draft.status === 'queued').length;
+  const uploading = drafts.filter((draft) => draft.status === 'uploading').length;
+  const failed = drafts.filter((draft) => draft.status === 'failed').length;
+  return { queued, uploading, failed, pending: queued + uploading + failed };
 }
 
 async function processDraft(draft: OfflineDraft) {

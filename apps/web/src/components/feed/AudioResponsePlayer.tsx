@@ -21,6 +21,8 @@ export function AudioResponsePlayer({ text, language: initialLanguage }: AudioRe
   const progressTimerRef = useRef<number | null>(null);
 
   const estimatedDuration = Math.max(7, Math.round((text.length * 0.055) / speed));
+  const speechSupported = typeof window !== 'undefined' && 'speechSynthesis' in window && typeof SpeechSynthesisUtterance !== 'undefined';
+  const selectedVoice = voices.find((voice) => initialLanguage === 'mo' ? /^(mos|mo)(-|$)/i.test(voice.lang) : voice.lang.toLowerCase().startsWith('fr'));
 
   useEffect(() => {
     if (!('speechSynthesis' in window)) return undefined;
@@ -31,30 +33,53 @@ export function AudioResponsePlayer({ text, language: initialLanguage }: AudioRe
   }, []);
 
   function stopPlayback() {
-    if ('speechSynthesis' in window) window.speechSynthesis.cancel();
-    if (progressTimerRef.current) window.clearInterval(progressTimerRef.current);
+    const utterance = utteranceRef.current;
     utteranceRef.current = null;
+    if (speechSupported) window.speechSynthesis.cancel();
+    if (progressTimerRef.current) window.clearInterval(progressTimerRef.current);
+    progressTimerRef.current = null;
     setIsPlaying(false);
     setProgress(0);
+    if (utterance) utterance.onend = utterance.onerror = null;
   }
 
   function startPlayback() {
-    if (!('speechSynthesis' in window)) return;
-    window.speechSynthesis.cancel();
-    const selectedLanguage = languageOptions.find((item) => item.value === initialLanguage) ?? languageOptions[0];
-    const matchingVoice = voices.find((voice) => initialLanguage === 'mo' ? /^(mos|mo)(-|$)/i.test(voice.lang) : voice.lang.toLowerCase().startsWith('fr'));
-    if (initialLanguage === 'mo' && !matchingVoice) {
-      setVoiceNotice('Aucune voix Mooré fiable n’est disponible sur cet appareil. L’audio original reste accessible s’il a été joint.');
+    if (!speechSupported) {
+      setVoiceNotice('La lecture vocale n’est pas prise en charge par ce navigateur. Le texte de la réponse reste disponible ci-dessus.');
       return;
     }
-    setVoiceNotice(matchingVoice ? `Lecture dans la langue de la réponse · ${matchingVoice.name}` : 'Voix française fournie par le moteur de votre appareil.');
+    window.speechSynthesis.cancel();
+    const selectedLanguage = languageOptions.find((item) => item.value === initialLanguage) ?? languageOptions[0];
+    const matchingVoice = selectedVoice;
+    if (initialLanguage === 'mo' && !matchingVoice) {
+      setVoiceNotice('Aucune voix Mooré n’est installée sur cet appareil. La réponse écrite reste disponible ci-dessus.');
+      return;
+    }
+    setVoiceNotice(matchingVoice ? `Lecture dans la langue de la réponse · ${matchingVoice.name}` : 'Voix française disponible sur cet appareil.');
     const utterance = new SpeechSynthesisUtterance(text);
     utterance.lang = selectedLanguage.speechLanguage;
     if (matchingVoice) utterance.voice = matchingVoice;
     utterance.rate = speed;
     utterance.pitch = 1;
-    utterance.onend = () => stopPlayback();
-    utterance.onerror = () => stopPlayback();
+    const finish = () => {
+      if (utteranceRef.current !== utterance) return;
+      utteranceRef.current = null;
+      if (progressTimerRef.current) window.clearInterval(progressTimerRef.current);
+      progressTimerRef.current = null;
+      setIsPlaying(false);
+      setProgress(0);
+    };
+    utterance.onend = finish;
+    utterance.onerror = (event) => {
+      if (utteranceRef.current !== utterance) return;
+      finish();
+      const reason = event.error === 'not-allowed'
+        ? 'Le navigateur a bloqué la lecture vocale. Réessayez après une interaction avec la page.'
+        : event.error === 'language-unavailable'
+          ? `Aucune voix ${selectedLanguage.label} compatible n’est disponible sur cet appareil.`
+          : 'La lecture vocale a échoué. Le texte de la réponse reste disponible ci-dessus.';
+      setVoiceNotice(reason);
+    };
     utteranceRef.current = utterance;
     setIsPlaying(true);
     setProgress(0);
@@ -63,7 +88,11 @@ export function AudioResponsePlayer({ text, language: initialLanguage }: AudioRe
       const elapsed = (Date.now() - startedAt) / 1000;
       setProgress(Math.min(100, (elapsed / estimatedDuration) * 100));
     }, 100);
-    window.speechSynthesis.speak(utterance);
+    try { window.speechSynthesis.speak(utterance); }
+    catch {
+      stopPlayback();
+      setVoiceNotice('Impossible de démarrer la lecture vocale. Le texte de la réponse reste disponible ci-dessus.');
+    }
   }
 
   function togglePlayback() {

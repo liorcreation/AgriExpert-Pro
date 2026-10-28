@@ -1,5 +1,5 @@
 import { Component, lazy, Suspense, useCallback, useEffect, useLayoutEffect, useRef, useState, type ErrorInfo, type ReactNode } from 'react';
-import { AnimatePresence, motion } from 'framer-motion';
+import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import {
   Activity,
   AlertTriangle,
@@ -96,6 +96,7 @@ function readInitialPreferences(): LocalUiPreferences {
 }
 
 function App() {
+  const reduceMotion = useReducedMotion();
   const [authSession, setAuthSession] = useState<AuthSession | null>(readAuthSession);
   const [showBrandIntro, setShowBrandIntro] = useState(shouldShowBrandIntro);
   const [initialPreferences] = useState(readInitialPreferences);
@@ -261,9 +262,9 @@ function App() {
         {overlay === 'profile' && <ProfilePanel role={role} profile={authSession.profile} plan={authSession.plan} name={authSession.name} onClose={hideOverlay} onLogout={logout} onSettings={() => showOverlay('settings')} />}
         {overlay === 'settings' && <SettingsPanel language={language} voiceEnabled={voiceEnabled} darkMode={darkMode} onClose={hideOverlay} onLanguageChange={updateLanguage} onVoiceToggle={updateVoiceEnabled} onThemeToggle={() => updateDarkMode(!darkMode)} />}
         {overlay === 'help' && <HelpPanel onClose={hideOverlay} navigate={(key) => { navigate(key); hideOverlay(); }} />}
-        <main id="agri-main-content" className="agri-main" tabIndex={-1}><div className="agri-main-inner"><PageErrorBoundary key={activeKey}>
+        <main id="agri-main-content" className="agri-main" tabIndex={-1}><div className="agri-main-inner"><motion.div key={activeKey} initial={reduceMotion ? false : { opacity: 0, y: 7 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: reduceMotion ? 0 : .22, ease: [.22, 1, .36, 1] }}><PageErrorBoundary key={activeKey}>
           {activeKey === 'overview' ? <Overview navigate={navigate} onRequestQuestion={requestQuestionComposer} voiceEnabled={voiceEnabled} role={role} name={authSession.name} plan={authSession.plan} /> : activeKey === 'emergency' ? <LazyPage label="Ouverture du centre SOS…"><EmergencyPage role={role} onBack={() => navigate('overview')} /></LazyPage> : activeKey === 'feed' ? <LazyPage label="Chargement du fil d’échanges…"><FeedPage role={role} onBack={() => navigate('overview')} onNavigate={navigate} openComposerRequest={contactRequestPending} initialComposerMode={composerModeRequest} onComposerRequestHandled={() => setContactRequestPending(false)} /></LazyPage> : activeKey === 'institutional' ? <LazyPage label="Chargement du cockpit institutionnel…"><InstitutionalDashboard onBack={() => navigate('overview')} /></LazyPage> : activeKey === 'guides' ? <LazyPage label="Chargement des fiches techniques…"><ResourcesPage role={role} kind="guides" onBack={() => navigate('overview')} onNavigate={navigate} /></LazyPage> : activeKey === 'directory' ? <LazyPage label="Ouverture de l’annuaire…"><ResourcesPage role={role} kind="directory" onBack={() => navigate('overview')} onNavigate={navigate} onContactExpert={() => requestQuestionComposer('text')} /></LazyPage> : activeKey === 'billing' ? <LazyPage label="Ouverture de la facturation…"><BillingPage onBack={() => navigate('overview')} /></LazyPage> : <Overview navigate={navigate} onRequestQuestion={requestQuestionComposer} voiceEnabled={voiceEnabled} role={role} name={authSession.name} plan={authSession.plan} />}
-        </PageErrorBoundary></div></main>
+        </PageErrorBoundary></motion.div></div></main>
       </div>
     </div>
   );
